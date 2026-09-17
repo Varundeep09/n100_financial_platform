@@ -1,0 +1,25 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Raw and supporting source data (confidential, do not commit to VCS)
+data/raw/
+data/supporting/
+*.xlsx
+
+# Database — share schema.sql instead
+db/*.db
+*.db
+
+# Secrets
+.env
+
+# pytest artifacts
+reports/pytest_report.html
+.pytest_cache/
+
+# OS/editor
+.DS_Store
+.vscode/
