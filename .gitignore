@@ -4,12 +4,14 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 
-# Raw and supporting source data (confidential, do not commit to VCS)
+# Data - raw, supporting, and local processed outputs (confidential / artifacts)
 data/raw/
 data/supporting/
+data/processed/
+data/*.xlsx
 *.xlsx
 
-# Database — share schema.sql instead
+# Database - share schema.sql instead
 db/*.db
 *.db
 
@@ -20,6 +22,6 @@ db/*.db
 reports/pytest_report.html
 .pytest_cache/
 
-# OS/editor
+# OS and editor
 .DS_Store
 .vscode/
