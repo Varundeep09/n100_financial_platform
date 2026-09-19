@@ -143,3 +143,41 @@ def test_database_loader_full_integration(tmp_path: Path) -> None:
     fk_violations = cursor.execute("PRAGMA foreign_key_check;").fetchall()
     conn.close()
     assert len(fk_violations) == 0
+
+
+def test_raw_row_count_reconciliation() -> None:
+    """Verify that raw file row counts match Day 1 profiling and reconcile perfectly."""
+    from src.etl.loader import load_core_file, load_supporting_file
+
+    expected_raw = {
+        "companies.xlsx": 92,
+        "profitandloss.xlsx": 1276,
+        "balancesheet.xlsx": 1312,
+        "cashflow.xlsx": 1187,
+        "analysis.xlsx": 20,
+        "documents.xlsx": 1585,
+        "prosandcons.xlsx": 16,
+        "sectors.xlsx": 92,
+        "stock_prices.xlsx": 5520,
+        "market_cap.xlsx": 552,
+        "financial_ratios.xlsx": 1184,
+        "peer_groups.xlsx": 56,
+    }
+
+    core_set = {
+        "companies.xlsx",
+        "profitandloss.xlsx",
+        "balancesheet.xlsx",
+        "cashflow.xlsx",
+        "analysis.xlsx",
+        "documents.xlsx",
+        "prosandcons.xlsx",
+    }
+
+    for filename, count in expected_raw.items():
+        if filename in core_set:
+            df = load_core_file(filename)
+        else:
+            df = load_supporting_file(filename)
+        assert df is not None, f"File {filename} could not be loaded"
+        assert len(df) == count, f"{filename}: expected {count} raw rows, got {len(df)}"
