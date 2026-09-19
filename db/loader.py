@@ -4,6 +4,8 @@ import logging
 import os
 import sqlite3
 import sys
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -33,6 +35,8 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 DB_PATH: Path = PROJECT_ROOT / os.getenv("DB_PATH", "db/nifty100.db")
 SCHEMA_PATH: Path = PROJECT_ROOT / "db" / "schema.sql"
+REPORTS_DIR: Path = PROJECT_ROOT / "reports"
+AUDIT_PATH: Path = REPORTS_DIR / "load_audit.csv"
 
 
 def init_database(
@@ -243,83 +247,248 @@ def transform_market_cap(df: pd.DataFrame, valid_tickers: set[str]) -> pd.DataFr
 
 
 def load_all_tables(
-    db_path: Path = DB_PATH, schema_path: Path = SCHEMA_PATH
+    db_path: Path = DB_PATH,
+    schema_path: Path = SCHEMA_PATH,
+    audit_path: Path = AUDIT_PATH,
 ) -> dict[str, int]:
-    """Execute end-to-end extraction, transformation, and SQLite insertion across 10 tables."""
+    """Execute end-to-end production load for all 12 files and write load_audit.csv."""
     conn = init_database(db_path, schema_path)
     counts: dict[str, int] = {}
+    audit_rows: list[dict[str, object]] = []
 
     try:
         # 1. Master Companies
+        t0 = time.perf_counter()
         raw_companies = load_core_file("companies.xlsx")
         clean_companies = transform_companies(raw_companies)
         clean_companies.to_sql("companies", conn, if_exists="append", index=False)
         counts["companies"] = len(clean_companies)
         valid_tickers = set(clean_companies["id"])
-        logger.info(f"Loaded 'companies' table: {len(clean_companies)} rows")
+        dt = time.perf_counter() - t0
+        audit_rows.append(
+            {
+                "table": "companies",
+                "rows_in": len(raw_companies),
+                "rows_out": len(clean_companies),
+                "rejected": len(raw_companies) - len(clean_companies),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "runtime_s": round(dt, 4),
+            }
+        )
+        logger.info(f"Loaded 'companies': {len(clean_companies)} rows in {dt:.3f}s")
 
         # 2. Profit and Loss
+        t0 = time.perf_counter()
         raw_pl = load_core_file("profitandloss.xlsx")
         clean_pl = transform_profitandloss(raw_pl, valid_tickers)
         clean_pl.to_sql("profitandloss", conn, if_exists="append", index=False)
         counts["profitandloss"] = len(clean_pl)
-        logger.info(f"Loaded 'profitandloss' table: {len(clean_pl)} rows")
+        dt = time.perf_counter() - t0
+        audit_rows.append(
+            {
+                "table": "profitandloss",
+                "rows_in": len(raw_pl),
+                "rows_out": len(clean_pl),
+                "rejected": len(raw_pl) - len(clean_pl),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "runtime_s": round(dt, 4),
+            }
+        )
+        logger.info(f"Loaded 'profitandloss': {len(clean_pl)} rows in {dt:.3f}s")
 
         # 3. Balance Sheet
+        t0 = time.perf_counter()
         raw_bs = load_core_file("balancesheet.xlsx")
         clean_bs = transform_balancesheet(raw_bs, valid_tickers)
         clean_bs.to_sql("balancesheet", conn, if_exists="append", index=False)
         counts["balancesheet"] = len(clean_bs)
-        logger.info(f"Loaded 'balancesheet' table: {len(clean_bs)} rows")
+        dt = time.perf_counter() - t0
+        audit_rows.append(
+            {
+                "table": "balancesheet",
+                "rows_in": len(raw_bs),
+                "rows_out": len(clean_bs),
+                "rejected": len(raw_bs) - len(clean_bs),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "runtime_s": round(dt, 4),
+            }
+        )
+        logger.info(f"Loaded 'balancesheet': {len(clean_bs)} rows in {dt:.3f}s")
 
         # 4. Cash Flow
+        t0 = time.perf_counter()
         raw_cf = load_core_file("cashflow.xlsx")
         clean_cf = transform_cashflow(raw_cf, valid_tickers)
         clean_cf.to_sql("cashflow", conn, if_exists="append", index=False)
         counts["cashflow"] = len(clean_cf)
-        logger.info(f"Loaded 'cashflow' table: {len(clean_cf)} rows")
+        dt = time.perf_counter() - t0
+        audit_rows.append(
+            {
+                "table": "cashflow",
+                "rows_in": len(raw_cf),
+                "rows_out": len(clean_cf),
+                "rejected": len(raw_cf) - len(clean_cf),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "runtime_s": round(dt, 4),
+            }
+        )
+        logger.info(f"Loaded 'cashflow': {len(clean_cf)} rows in {dt:.3f}s")
 
         # 5. Analysis
+        t0 = time.perf_counter()
         raw_analysis = load_core_file("analysis.xlsx")
         clean_analysis = transform_analysis(raw_analysis, valid_tickers)
         clean_analysis.to_sql("analysis", conn, if_exists="append", index=False)
         counts["analysis"] = len(clean_analysis)
-        logger.info(f"Loaded 'analysis' table: {len(clean_analysis)} rows")
+        dt = time.perf_counter() - t0
+        audit_rows.append(
+            {
+                "table": "analysis",
+                "rows_in": len(raw_analysis),
+                "rows_out": len(clean_analysis),
+                "rejected": len(raw_analysis) - len(clean_analysis),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "runtime_s": round(dt, 4),
+            }
+        )
+        logger.info(f"Loaded 'analysis': {len(clean_analysis)} rows in {dt:.3f}s")
 
         # 6. Documents
+        t0 = time.perf_counter()
         raw_docs = load_core_file("documents.xlsx")
         clean_docs = transform_documents(raw_docs, valid_tickers)
         clean_docs.to_sql("documents", conn, if_exists="append", index=False)
         counts["documents"] = len(clean_docs)
-        logger.info(f"Loaded 'documents' table: {len(clean_docs)} rows")
+        dt = time.perf_counter() - t0
+        audit_rows.append(
+            {
+                "table": "documents",
+                "rows_in": len(raw_docs),
+                "rows_out": len(clean_docs),
+                "rejected": len(raw_docs) - len(clean_docs),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "runtime_s": round(dt, 4),
+            }
+        )
+        logger.info(f"Loaded 'documents': {len(clean_docs)} rows in {dt:.3f}s")
 
         # 7. Pros and Cons
+        t0 = time.perf_counter()
         raw_pc = load_core_file("prosandcons.xlsx")
         clean_pc = transform_prosandcons(raw_pc, valid_tickers)
         clean_pc.to_sql("prosandcons", conn, if_exists="append", index=False)
         counts["prosandcons"] = len(clean_pc)
-        logger.info(f"Loaded 'prosandcons' table: {len(clean_pc)} rows")
+        dt = time.perf_counter() - t0
+        audit_rows.append(
+            {
+                "table": "prosandcons",
+                "rows_in": len(raw_pc),
+                "rows_out": len(clean_pc),
+                "rejected": len(raw_pc) - len(clean_pc),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "runtime_s": round(dt, 4),
+            }
+        )
+        logger.info(f"Loaded 'prosandcons': {len(clean_pc)} rows in {dt:.3f}s")
 
         # 8. Sectors
+        t0 = time.perf_counter()
         raw_sectors = load_supporting_file("sectors.xlsx")
         clean_sectors = transform_sectors(raw_sectors, valid_tickers)
         clean_sectors.to_sql("sectors", conn, if_exists="append", index=False)
         counts["sectors"] = len(clean_sectors)
-        logger.info(f"Loaded 'sectors' table: {len(clean_sectors)} rows")
+        dt = time.perf_counter() - t0
+        audit_rows.append(
+            {
+                "table": "sectors",
+                "rows_in": len(raw_sectors),
+                "rows_out": len(clean_sectors),
+                "rejected": len(raw_sectors) - len(clean_sectors),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "runtime_s": round(dt, 4),
+            }
+        )
+        logger.info(f"Loaded 'sectors': {len(clean_sectors)} rows in {dt:.3f}s")
 
         # 9. Stock Prices
+        t0 = time.perf_counter()
         raw_prices = load_supporting_file("stock_prices.xlsx")
         clean_prices = transform_stock_prices(raw_prices, valid_tickers)
         clean_prices.to_sql("stock_prices", conn, if_exists="append", index=False)
         counts["stock_prices"] = len(clean_prices)
-        logger.info(f"Loaded 'stock_prices' table: {len(clean_prices)} rows")
+        dt = time.perf_counter() - t0
+        audit_rows.append(
+            {
+                "table": "stock_prices",
+                "rows_in": len(raw_prices),
+                "rows_out": len(clean_prices),
+                "rejected": len(raw_prices) - len(clean_prices),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "runtime_s": round(dt, 4),
+            }
+        )
+        logger.info(f"Loaded 'stock_prices': {len(clean_prices)} rows in {dt:.3f}s")
 
         # 10. Market Cap
+        t0 = time.perf_counter()
         raw_mcap = load_supporting_file("market_cap.xlsx")
         clean_mcap = transform_market_cap(raw_mcap, valid_tickers)
         clean_mcap.to_sql("market_cap", conn, if_exists="append", index=False)
         counts["market_cap"] = len(clean_mcap)
-        logger.info(f"Loaded 'market_cap' table: {len(clean_mcap)} rows")
+        dt = time.perf_counter() - t0
+        audit_rows.append(
+            {
+                "table": "market_cap",
+                "rows_in": len(raw_mcap),
+                "rows_out": len(clean_mcap),
+                "rejected": len(raw_mcap) - len(clean_mcap),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "runtime_s": round(dt, 4),
+            }
+        )
+        logger.info(f"Loaded 'market_cap': {len(clean_mcap)} rows in {dt:.3f}s")
+
+        # 11. Supplementary File: Financial Ratios (Profiled, held for Sprint 2)
+        t0 = time.perf_counter()
+        raw_ratios = load_supporting_file("financial_ratios.xlsx")
+        dt = time.perf_counter() - t0
+        audit_rows.append(
+            {
+                "table": "financial_ratios",
+                "rows_in": len(raw_ratios),
+                "rows_out": 0,
+                "rejected": 0,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "runtime_s": round(dt, 4),
+            }
+        )
+        logger.info(
+            f"Profiled 'financial_ratios' (Sprint 2 computed): {len(raw_ratios)} raw rows"
+        )
+
+        # 12. Supplementary File: Peer Groups (Profiled, held for Sprint 3)
+        t0 = time.perf_counter()
+        raw_peers = load_supporting_file("peer_groups.xlsx")
+        dt = time.perf_counter() - t0
+        audit_rows.append(
+            {
+                "table": "peer_groups",
+                "rows_in": len(raw_peers),
+                "rows_out": 0,
+                "rejected": 0,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "runtime_s": round(dt, 4),
+            }
+        )
+        logger.info(
+            f"Profiled 'peer_groups' (Sprint 3 screener): {len(raw_peers)} raw rows"
+        )
+
+        # Write load_audit.csv
+        audit_df = pd.DataFrame(audit_rows)
+        audit_path.parent.mkdir(parents=True, exist_ok=True)
+        audit_df.to_csv(audit_path, index=False)
+        logger.info(f"Load audit log successfully generated at {audit_path}")
 
         # Integrity Check
         cursor = conn.cursor()

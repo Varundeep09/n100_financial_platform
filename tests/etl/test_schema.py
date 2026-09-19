@@ -181,3 +181,34 @@ def test_raw_row_count_reconciliation() -> None:
             df = load_supporting_file(filename)
         assert df is not None, f"File {filename} could not be loaded"
         assert len(df) == count, f"{filename}: expected {count} raw rows, got {len(df)}"
+
+
+def test_load_audit_file_generation(tmp_path: Path) -> None:
+    """Verify that load_all_tables generates a valid load_audit.csv with all 12 files."""
+    db_file = tmp_path / "test_audit_db.db"
+    audit_file = tmp_path / "load_audit.csv"
+
+    load_all_tables(db_path=db_file, schema_path=SCHEMA_PATH, audit_path=audit_file)
+
+    assert audit_file.exists()
+    audit_df = pd.read_csv(audit_file)
+    expected_cols = [
+        "table",
+        "rows_in",
+        "rows_out",
+        "rejected",
+        "timestamp",
+        "runtime_s",
+    ]
+    assert list(audit_df.columns) == expected_cols
+    assert len(audit_df) == 12
+
+    companies_row = audit_df[audit_df["table"] == "companies"].iloc[0]
+    assert companies_row["rows_in"] == 92
+    assert companies_row["rows_out"] == 92
+    assert companies_row["rejected"] == 0
+
+    pl_row = audit_df[audit_df["table"] == "profitandloss"].iloc[0]
+    assert pl_row["rows_in"] == 1276
+    assert pl_row["rows_out"] == 1073
+    assert pl_row["rejected"] == 203
