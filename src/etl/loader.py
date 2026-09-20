@@ -85,6 +85,9 @@ YEAR_MONTH_REGEX: re.Pattern[str] = re.compile(
     r"^(\d{2,4})[-\s/]+([a-z]+)$", re.IGNORECASE
 )
 TICKER_VALID_REGEX: re.Pattern[str] = re.compile(r"^[A-Z0-9\-&]{2,12}$")
+TICKER_ALIASES: dict[str, str] = {
+    "AGTL": "ATGL",
+}
 
 
 def log_parse_failure(raw_value: Any, field_name: str = "year") -> None:
@@ -192,6 +195,7 @@ def normalize_ticker(value: Any) -> str | None:
     ticker_str = str(value).strip().upper()
     if not ticker_str:
         return None
+    ticker_str = TICKER_ALIASES.get(ticker_str, ticker_str)
     if TICKER_VALID_REGEX.match(ticker_str):
         return ticker_str
     return None

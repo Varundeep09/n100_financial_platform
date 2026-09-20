@@ -212,3 +212,28 @@ def test_load_audit_file_generation(tmp_path: Path) -> None:
     assert pl_row["rows_in"] == 1276
     assert pl_row["rows_out"] == 1073
     assert pl_row["rejected"] == 203
+
+    cf_row = audit_df[audit_df["table"] == "cashflow"].iloc[0]
+    assert cf_row["rows_in"] == 1187
+    assert cf_row["rows_out"] == 1063
+    assert cf_row["rejected"] == 124
+
+
+def test_atgl_cashflow_recovery(tmp_path: Path) -> None:
+    """Verify raw typo 'AGTL' in cashflow.xlsx is recovered to valid ticker 'ATGL' with 7 rows."""
+    db_file = tmp_path / "test_atgl_db.db"
+    counts = load_all_tables(db_path=db_file, schema_path=SCHEMA_PATH)
+    assert counts["cashflow"] == 1063
+
+    conn = sqlite3.connect(str(db_file))
+    cursor = conn.cursor()
+    atgl_cf = cursor.execute(
+        "SELECT COUNT(*) FROM cashflow WHERE company_id='ATGL';"
+    ).fetchone()[0]
+    agtl_cf = cursor.execute(
+        "SELECT COUNT(*) FROM cashflow WHERE company_id='AGTL';"
+    ).fetchone()[0]
+    conn.close()
+
+    assert atgl_cf == 7
+    assert agtl_cf == 0

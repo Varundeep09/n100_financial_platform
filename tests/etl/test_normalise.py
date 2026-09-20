@@ -310,3 +310,9 @@ def test_ticker_too_long() -> None:
 def test_ticker_invalid_special_chars() -> None:
     """Verify symbol with invalid special characters is rejected."""
     assert normalize_ticker("TCS$INC") is None
+
+
+def test_ticker_alias_agtl_recovers_atgl() -> None:
+    """Verify raw typo 'AGTL' correctly resolves to valid master ticker 'ATGL'."""
+    assert normalize_ticker("AGTL") == "ATGL"
+    assert normalize_ticker(" agtl ") == "ATGL"
