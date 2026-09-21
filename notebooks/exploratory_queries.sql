@@ -97,9 +97,18 @@ UNION ALL
 SELECT 'cashflow', company_id, year, COUNT(*)
 FROM cashflow GROUP BY company_id, year HAVING COUNT(*) > 1;
 
--- 10. Demonstration of '%-03' annual filter rule for Balance Sheet joins
-SELECT 'All Balance Sheet Rows' AS filter_state, COUNT(*) AS total_rows, COUNT(DISTINCT company_id) AS companies FROM balancesheet
-UNION ALL
-SELECT 'Annual FY-End Only (year LIKE %-03)', COUNT(*), COUNT(DISTINCT company_id) FROM balancesheet WHERE year LIKE '%-03'
-UNION ALL
-SELECT 'Interim H1 Only (year LIKE %-09)', COUNT(*), COUNT(DISTINCT company_id) FROM balancesheet WHERE year LIKE '%-09';
+-- 10. Balance Sheet fiscal month distribution & Annual Join Accounting
+-- (Reconciles all 1,140 BS rows: 1013 Mar + 94 Sep interim + 27 Dec + 6 Jun)
+SELECT SUBSTR(year, 6, 2) AS month_suffix,
+       CASE SUBSTR(year, 6, 2)
+         WHEN '03' THEN 'March (Standard Indian FY-End)'
+         WHEN '09' THEN 'September (Interim H1 for 83 non-financials)'
+         WHEN '12' THEN 'December (Historical FY-End: NESTLEIND, AMBUJACEM, etc.)'
+         WHEN '06' THEN 'June (Historical FY-End: HCLTECH, SHREECEM)'
+         ELSE 'Other'
+       END AS period_type,
+       COUNT(*) AS total_rows,
+       COUNT(DISTINCT company_id) AS distinct_companies
+FROM balancesheet
+GROUP BY month_suffix
+ORDER BY total_rows DESC;
