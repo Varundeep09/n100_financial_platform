@@ -4,6 +4,7 @@ Handles:
 - Standard non-financial companies.
 - Automatic recovery of shifted columns for affected non-financials (HINDUNILVR, CIPLA, COALINDIA, HINDALCO, HEROMOTOCO, INDIGO).
 - Financial sector (banks, NBFCs, insurers) separation where OPM and ROCE are not applicable.
+- Extreme value sanity flagging (|ROE| > 200%, |ROA| > 100%, |ROCE| > 200%) for near-zero equity/asset bases (e.g. INDIGO).
 - Graceful None handling for zero/negative denominators or missing balance sheets (e.g. SBIN).
 """
 
@@ -17,7 +18,8 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = Path("db/nifty100.db")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DB_PATH = REPO_ROOT / "db" / "nifty100.db"
 
 # Global log of OPM cross-check discrepancies
 OPM_DISCREPANCIES: list[dict[str, Any]] = []
@@ -226,6 +228,19 @@ def compute_roa(net_profit: float | None, total_assets: float | None) -> float |
     return round((float(net_profit) / float(total_assets)) * 100.0, 4)
 
 
+def check_extreme_magnitude_flag(
+    roe: float | None,
+    roce: float | None,
+    roa: float | None,
+) -> bool:
+    """Flag extreme statistical outlier ratios driven by near-zero equity/asset denominators."""
+    if roe is not None and abs(roe) > 200.0:
+        return True
+    if roce is not None and abs(roce) > 200.0:
+        return True
+    return bool(roa is not None and abs(roa) > 100.0)
+
+
 def get_financial_statements_data(
     company_id: str | None = None,
     db_path: Path = DB_PATH,
@@ -277,6 +292,7 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
     roce_sec_list: list[bool] = []
     roa_list: list[float | None] = []
     norm_status_list: list[str] = []
+    extreme_flag_list: list[bool] = []
 
     for _, row in out_df.iterrows():
         broad_sector = row.get("broad_sector")
@@ -299,7 +315,8 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
         norm_status_list.append(norm["status"])
 
         # NPM
-        npm_list.append(compute_npm(true_net_profit, true_sales))
+        npm_val = compute_npm(true_net_profit, true_sales)
+        npm_list.append(npm_val)
 
         # OPM
         source_opm = (
@@ -307,25 +324,23 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
             if norm["is_shifted"]
             else row.get("opm_percentage")
         )
-        opm_list.append(
-            compute_opm(
-                true_op,
-                true_sales,
-                source_opm=source_opm,
-                company_id=row.get("company_id"),
-                year=row.get("year"),
-                broad_sector=broad_sector,
-            )
+        opm_val = compute_opm(
+            true_op,
+            true_sales,
+            source_opm=source_opm,
+            company_id=row.get("company_id"),
+            year=row.get("year"),
+            broad_sector=broad_sector,
         )
+        opm_list.append(opm_val)
 
         # ROE
-        roe_list.append(
-            compute_roe(
-                true_net_profit,
-                row.get("equity_capital"),
-                row.get("reserves"),
-            )
+        roe_val = compute_roe(
+            true_net_profit,
+            row.get("equity_capital"),
+            row.get("reserves"),
         )
+        roe_list.append(roe_val)
 
         # ROCE
         roce_dict = compute_roce(
@@ -336,11 +351,17 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
             row.get("borrowings"),
             broad_sector=broad_sector,
         )
-        roce_list.append(roce_dict["value"])
+        roce_val = roce_dict["value"]
+        roce_list.append(roce_val)
         roce_sec_list.append(roce_dict["sector_relative"])
 
         # ROA
-        roa_list.append(compute_roa(true_net_profit, row.get("total_assets")))
+        roa_val = compute_roa(true_net_profit, row.get("total_assets"))
+        roa_list.append(roa_val)
+
+        # Extreme magnitude flag
+        extreme_flag = check_extreme_magnitude_flag(roe_val, roce_val, roa_val)
+        extreme_flag_list.append(extreme_flag)
 
     out_df["npm_pct"] = npm_list
     out_df["opm_pct"] = opm_list
@@ -348,6 +369,7 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
     out_df["roce_pct"] = roce_list
     out_df["roce_sector_relative"] = roce_sec_list
     out_df["roa_pct"] = roa_list
+    out_df["extreme_magnitude_flag"] = extreme_flag_list
     out_df["pl_normalization_status"] = norm_status_list
 
     return out_df

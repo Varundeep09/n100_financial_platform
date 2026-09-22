@@ -3,7 +3,8 @@
 Includes tests for:
 - Standard non-financial companies.
 - Automatic recovery of shifted non-financial companies (HINDUNILVR, CIPLA, COALINDIA, etc.).
-- Financials sector graceful None handling for OPM and ROCE.
+- Financials sector graceful None handling for OPM and ROCE across all 23 Financials.
+- Extreme value sanity flagging (|ROE| > 200%, |ROA| > 100%) for near-zero equity/asset bases (INDIGO).
 - Missing balance sheet graceful handling (SBIN).
 - Edge cases (zero sales, negative equity, zero assets).
 """
@@ -14,6 +15,7 @@ import pytest
 from src.analytics.ratios import (
     OPM_DISCREPANCIES,
     calculate_profitability_metrics,
+    check_extreme_magnitude_flag,
     compute_npm,
     compute_opm,
     compute_roa,
@@ -101,6 +103,13 @@ def test_roa_zero_assets() -> None:
     assert compute_roa(None, 100000.0) is None
 
 
+def test_extreme_magnitude_flag() -> None:
+    """Verify extreme magnitude flag triggers on outlier ratios."""
+    assert check_extreme_magnitude_flag(roe=892.57, roce=1064.91, roa=668.33) is True
+    assert check_extreme_magnitude_flag(roe=20.0, roce=25.0, roa=12.0) is False
+    assert check_extreme_magnitude_flag(roe=-250.0, roce=10.0, roa=5.0) is True
+
+
 def test_opm_cross_check_logging() -> None:
     """Verify OPM calculation and discrepancy logging for non-financials."""
     initial_len = len(OPM_DISCREPANCIES)
@@ -130,22 +139,22 @@ def test_opm_cross_check_logging() -> None:
 def test_normalize_pl_statement_shifted_recovery() -> None:
     """Verify automated detection and recovery of shifted non-financial columns."""
     norm = normalize_pl_statement(
-        sales=61896.0,
-        expenses=334.0,  # Other Income in raw Excel
-        operating_profit=47237.0,  # True Expenses
-        opm_percentage=14659.0,  # True Operating Profit
+        sales=68904.0,
+        expenses=4805.0,  # Other Income in raw Excel for INDIGO
+        operating_profit=52573.0,  # True Expenses for INDIGO
+        opm_percentage=16331.0,  # True Operating Profit for INDIGO
         other_income=24.0,  # True OPM %
-        depreciation=1216.0,
-        profit_before_tax=13926.0,
-        net_profit=10282.0,
-        broad_sector="Consumer Staples",
+        depreciation=6406.0,
+        profit_before_tax=8043.0,
+        net_profit=8167.0,
+        broad_sector="Consumer Discretionary",
     )
     assert norm["is_shifted"] is True
     assert norm["status"] == "SHIFTED_NON_FINANCIAL_RECOVERED"
-    assert norm["true_sales"] == 61896.0
-    assert norm["true_expenses"] == 47237.0
-    assert norm["true_operating_profit"] == 14659.0
-    assert norm["true_other_income"] == 334.0
+    assert norm["true_sales"] == 68904.0
+    assert norm["true_expenses"] == 52573.0
+    assert norm["true_operating_profit"] == 16331.0
+    assert norm["true_other_income"] == 4805.0
 
 
 def test_normalize_pl_statement_financials() -> None:
@@ -166,6 +175,23 @@ def test_normalize_pl_statement_financials() -> None:
     assert norm["status"] == "FINANCIAL_SECTOR"
 
 
+def test_indigo_profitability_recovered_and_flagged() -> None:
+    """Verify INDIGO recovers OPM correctly and triggers extreme magnitude flag on thin equity/asset base."""
+    if not DB_PATH.exists():
+        pytest.skip("Database db/nifty100.db not present")
+
+    df_indigo = get_financial_statements_data(company_id="INDIGO", db_path=DB_PATH)
+    assert not df_indigo.empty
+    metrics_df = calculate_profitability_metrics(df_indigo)
+
+    row_2024 = metrics_df[metrics_df["year"] == "2024-03"].iloc[0]
+    assert row_2024["pl_normalization_status"] == "SHIFTED_NON_FINANCIAL_RECOVERED"
+    assert row_2024["npm_pct"] == pytest.approx(11.85, abs=0.01)
+    assert row_2024["opm_pct"] == pytest.approx(23.70, abs=0.01)
+    assert row_2024["roe_pct"] == pytest.approx(892.57, abs=0.01)
+    assert bool(row_2024["extreme_magnitude_flag"]) is True
+
+
 def test_hindunilvr_profitability_recovered() -> None:
     """Verify end-to-end profitability calculation on HINDUNILVR with recovered columns."""
     if not DB_PATH.exists():
@@ -175,7 +201,6 @@ def test_hindunilvr_profitability_recovered() -> None:
     assert not df_hul.empty
     metrics_df = calculate_profitability_metrics(df_hul)
 
-    # Check FY2024 (2024-03)
     row_2024 = metrics_df[metrics_df["year"] == "2024-03"].iloc[0]
     assert row_2024["pl_normalization_status"] == "SHIFTED_NON_FINANCIAL_RECOVERED"
     assert row_2024["npm_pct"] == pytest.approx(16.61, abs=0.01)
@@ -183,6 +208,7 @@ def test_hindunilvr_profitability_recovered() -> None:
     assert row_2024["roe_pct"] == pytest.approx(20.07, abs=0.02)
     assert row_2024["roce_pct"] == pytest.approx(25.51, abs=0.01)
     assert row_2024["roa_pct"] == pytest.approx(13.10, abs=0.01)
+    assert bool(row_2024["extreme_magnitude_flag"]) is False
 
 
 def test_axisbank_profitability_financials_separation() -> None:
@@ -194,7 +220,6 @@ def test_axisbank_profitability_financials_separation() -> None:
     assert not df_axis.empty
     metrics_df = calculate_profitability_metrics(df_axis)
 
-    # Check FY2024 (2024-03)
     row_2024 = metrics_df[metrics_df["year"] == "2024-03"].iloc[0]
     assert row_2024["pl_normalization_status"] == "FINANCIAL_SECTOR"
     assert row_2024["npm_pct"] == pytest.approx(22.73, abs=0.01)
@@ -203,6 +228,7 @@ def test_axisbank_profitability_financials_separation() -> None:
     assert row_2024["roce_pct"] is None
     assert bool(row_2024["roce_sector_relative"]) is True
     assert row_2024["roa_pct"] == pytest.approx(1.64, abs=0.01)
+    assert bool(row_2024["extreme_magnitude_flag"]) is False
 
 
 def test_sbin_bs_ratios_return_none() -> None:
