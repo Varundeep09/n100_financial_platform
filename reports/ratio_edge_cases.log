@@ -1,5 +1,5 @@
 # N100 Financial Platform — Ratio Engine Edge Cases & Schema Alignment Log
-# Date: 2026-09-22 | Status: Production Design Decision Log
+# Date: 2026-09-22 | Status: Production Design Decision Log (Evidence-Based Policy)
 
 ====================================================================================================
 1. BACKGROUND & DISCOVERY
@@ -8,7 +8,7 @@ During Sprint 2 Day 8 verification, an extreme OPM anomaly was discovered for AX
 A full forensic audit across all 92 companies and 1,073 P&L rows revealed two distinct source data export phenomena
 originating from Screener.in's raw table exports:
 
-A. FINANCIAL SECTOR (19 Companies - Banks, NBFCs, Insurers):
+A. BANKING & FINANCING P&L TEMPLATE (16 Companies):
    - Screener.in reports banking financials using specialized line items (Interest Earned, Interest Expended, 
      Financing Profit, Financing Margin %, Other Income, Provisions).
    - In the generic flat export schema `[sales, expenses, operating_profit, opm_percentage, other_income, interest, ...]`:
@@ -35,31 +35,52 @@ B. SHIFTED NON-FINANCIALS (6 Companies: HINDUNILVR, CIPLA, COALINDIA, HINDALCO, 
      * `net_profit`         = True Net Profit (₹ Cr)
      * `eps`                = True EPS
 
-C. STANDARD NON-FINANCIALS (63 Companies: TCS, RELIANCE, INFOSYS, MARUTI, TITAN, ABB, etc.):
-   - 100% clean adherence to standard accounting: `sales - expenses = operating_profit`.
+C. CLEAN FINANCIALS (7 Companies: JIOFIN, IRFC, RECLTD, BAJAJFINSV, BAJAJHLDNG, LICI, SBILIFE):
+   - These 7 Financials companies have 100% clean adherence to standard accounting: `sales - expenses == operating_profit`.
+   - Their operating_profit is genuine operating profit.
+   - OPM and ROCE are computed normally, with `roce_sector_relative = True` flagged for sector comparison.
+
+D. STANDARD NON-FINANCIALS (63 Companies: TCS, RELIANCE, INFOSYS, MARUTI, TITAN, ABB, etc.):
+   - 100% clean adherence to standard accounting: `sales - expenses == operating_profit`.
 
 ====================================================================================================
-2. RATIO CALCULATION MATRIX & ARCHITECTURAL DECISIONS
+2. ALL 23 FINANCIALS SECTOR CONSTITUENTS — EVIDENCE-BASED POLICY MATRIX
 ====================================================================================================
 
-Ratio Metric       | Non-Financials (Standard & Shifted Recovered) | Financials (Banks / NBFCs / Insurers)
--------------------|----------------------------------------------|---------------------------------------------------------
-NPM (%)            | (net_profit / sales) * 100                   | (net_profit / sales) * 100 [Genuine & Valid]
-OPM (%)            | (true_operating_profit / sales) * 100        | NULL / None (Marked NOT_APPLICABLE_FINANCIALS)
-ROE (%)            | (net_profit / total_equity) * 100            | (net_profit / total_equity) * 100 [Genuine & Valid]*
-ROCE (%)           | (EBIT / Capital_Employed) * 100              | NULL / None (Marked sector_relative=True, NOT_APPLICABLE)
-ROA (%)            | (net_profit / total_assets) * 100            | (net_profit / total_assets) * 100 [Genuine & Valid]*
-
-*Note for SBIN: Balance sheet is missing in source data (confirmed gap) -> ROE, ROCE, ROA gracefully return None.
+Company ID  | Sub-Sector             | P&L Identity (sales - exp == op) | Policy & Ratio Treatment
+------------|------------------------|----------------------------------|-------------------------------------------------------
+AXISBANK    | Private Banks          | Fails (Banking Template)         | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+BANKBARODA  | Public Sector Banks    | Fails (Banking Template)         | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+CANBK       | Public Sector Banks    | Fails (Banking Template)         | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+HDFCBANK    | Private Banks          | Fails (Banking Template)         | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+ICICIBANK   | Private Banks          | Fails (Banking Template)         | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+INDUSINDBK  | Private Banks          | Fails (Banking Template)         | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+KOTAKBANK   | Private Banks          | Fails (Banking Template)         | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+PNB         | Public Sector Banks    | Fails (Banking Template)         | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+SBIN        | Public Sector Banks    | Fails (Banking Template)         | OPM=None, ROCE=None, sector_relative=True, BS missing (ROE/ROA=None)
+BAJFINANCE  | Consumer Finance       | Fails (Banking Template)         | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+CHOLAFIN    | Consumer Finance       | Fails (Banking Template)         | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+PFC         | Speciality Finance     | Fails (Interest in Col 9)        | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+SHRIRAMFIN  | Consumer Finance       | Fails (Banking Template)         | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+HDFCLIFE    | Life Insurance         | Fails (Shifted / Premium)        | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+ICICIGI     | General Insurance      | Fails (Shifted / Premium)        | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+ICICIPRULI  | Life Insurance         | Fails (Shifted / Premium)        | OPM=None, ROCE=None, sector_relative=True, NPM/ROE/ROA valid
+------------|------------------------|----------------------------------|-------------------------------------------------------
+JIOFIN      | Diversified Financials | HOLDS (1,855 - 296 = 1,559)      | COMPUTE: OPM=84.04%, ROCE=1.10%, sector_relative=True
+IRFC        | Speciality Finance     | HOLDS (26,645 - 12 = 26,633)     | COMPUTE: OPM=99.95%, ROCE=5.75%, sector_relative=True
+RECLTD      | Speciality Finance     | HOLDS (47,517 - (-366) = 47,883) | COMPUTE: OPM=100.77%, ROCE=10.04%, sector_relative=True
+BAJAJFINSV  | Diversified Financials | HOLDS (110,382 - 69,497 = 40,885)| COMPUTE: OPM=37.04%, ROCE=11.38%, sector_relative=True
+BAJAJHLDNG  | Holding Companies      | HOLDS (1,702 - 140 = 1,562)      | COMPUTE: OPM=91.77%, ROCE=2.88%, sector_relative=True
+LICI        | Life Insurance         | HOLDS (845,966 - 813,188 = 32,778| COMPUTE: OPM=3.87%, ROCE=39.14%, sector_relative=True
+SBILIFE     | Life Insurance         | HOLDS (131,988 - 131,742 = 246)  | COMPUTE: OPM=0.19%, ROCE=1.14%, sector_relative=True
 
 ====================================================================================================
-3. AUTOMATED NORMALIZATION IN src/analytics/ratios.py
+3. EXTREME MAGNITUDE SANITY FLAGGING (INDIGO & SIMILAR OUTLIERS)
 ====================================================================================================
-The function `normalize_pl_statement()` dynamically inspects each P&L row:
-1. If `broad_sector == 'Financials'`:
-   - Sets `true_operating_profit = None`, `opm_applicable = False`, `roce_applicable = False`.
-   - Prevents misinterpreting bank operating expenses as operating profit.
-2. If `broad_sector != 'Financials'`:
-   - Validates accounting identity `sales - expenses == operating_profit` vs `sales - operating_profit == opm_percentage`.
-   - If shifted pattern detected: automatically recovers `true_operating_profit = opm_percentage` and `true_expenses = operating_profit`.
-   - Corrects 100% of rows for HINDUNILVR, CIPLA, COALINDIA, HINDALCO, HEROMOTOCO, and INDIGO with 0 data loss.
+Outlier ratios resulting from thin or near-zero equity/asset denominators (such as INDIGO's post-COVID
+turnaround on a depleted ₹915 Cr equity base yielding ROE = 892.57%) are marked with `extreme_magnitude_flag = True`
+whenever:
+- |ROE| > 200%
+- |ROCE| > 200%
+- |ROA| > 100%
+This preserves pure mathematical integrity while alerting downstream analytics and dashboard screeners.

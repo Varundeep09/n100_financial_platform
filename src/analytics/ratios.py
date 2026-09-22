@@ -3,8 +3,10 @@
 Handles:
 - Standard non-financial companies.
 - Automatic recovery of shifted columns for affected non-financials (HINDUNILVR, CIPLA, COALINDIA, HINDALCO, HEROMOTOCO, INDIGO).
-- Financial sector (banks, NBFCs, insurers) separation where OPM and ROCE are not applicable.
-- Extreme value sanity flagging (|ROE| > 200%, |ROA| > 100%, |ROCE| > 200%) for near-zero equity/asset bases (e.g. INDIGO).
+- Evidence-based Financials sector handling:
+  * 16 confirmed banking/financing-template companies (where operating_profit is Operating Expenses/Financing Profit) -> OPM=None, ROCE=None, sector_relative=True.
+  * 7 clean Financials (JIOFIN, IRFC, RECLTD, BAJAJFINSV, BAJAJHLDNG, LICI, SBILIFE) -> Compute real OPM & ROCE, keeping sector_relative=True.
+- Extreme value sanity flagging (|ROE| > 200%, |ROA| > 100%, |ROCE| > 200%) for near-zero equity/asset bases (INDIGO).
 - Graceful None handling for zero/negative denominators or missing balance sheets (e.g. SBIN).
 """
 
@@ -24,6 +26,26 @@ DB_PATH = REPO_ROOT / "db" / "nifty100.db"
 # Global log of OPM cross-check discrepancies
 OPM_DISCREPANCIES: list[dict[str, Any]] = []
 
+# Confirmed 16 companies with banking/financing P&L template or shifted columns
+BANKING_TEMPLATE_COMPANIES: set[str] = {
+    "AXISBANK",
+    "BANKBARODA",
+    "CANBK",
+    "HDFCBANK",
+    "ICICIBANK",
+    "INDUSINDBK",
+    "KOTAKBANK",
+    "PNB",
+    "SBIN",
+    "BAJFINANCE",
+    "CHOLAFIN",
+    "PFC",
+    "SHRIRAMFIN",
+    "HDFCLIFE",
+    "ICICIGI",
+    "ICICIPRULI",
+}
+
 
 def normalize_pl_statement(
     sales: float | None,
@@ -34,12 +56,16 @@ def normalize_pl_statement(
     depreciation: float | None,
     profit_before_tax: float | None,
     net_profit: float | None,
+    company_id: str | None = None,
     broad_sector: str | None = None,
 ) -> dict[str, Any]:
-    """Normalize and remap P&L line items accounting for raw Screener export column shifts and banking formats."""
+    """Normalize and remap P&L line items based on evidence-based classification."""
     is_financial = broad_sector == "Financials"
+    is_banking_template = (
+        company_id in BANKING_TEMPLATE_COMPANIES if company_id else False
+    )
 
-    if is_financial:
+    if is_banking_template:
         return {
             "true_sales": sales,
             "true_expenses": expenses,
@@ -50,7 +76,8 @@ def normalize_pl_statement(
             "true_net_profit": net_profit,
             "is_financial": True,
             "is_shifted": False,
-            "status": "FINANCIAL_SECTOR",
+            "is_banking_template": True,
+            "status": "BANKING_TEMPLATE_FINANCIAL",
         }
 
     s_val = float(sales) if sales is not None and not np.isnan(sales) else 0.0
@@ -70,7 +97,7 @@ def normalize_pl_statement(
     shift_diff = abs(s_val - op_val - opm_col_val)
     tolerance = max(2.0, 0.02 * abs(s_val))
 
-    if shift_diff <= tolerance and std_diff > tolerance:
+    if not is_financial and shift_diff <= tolerance and std_diff > tolerance:
         return {
             "true_sales": sales,
             "true_expenses": operating_profit,
@@ -81,9 +108,11 @@ def normalize_pl_statement(
             "true_net_profit": net_profit,
             "is_financial": False,
             "is_shifted": True,
+            "is_banking_template": False,
             "status": "SHIFTED_NON_FINANCIAL_RECOVERED",
         }
 
+    status = "CLEAN_FINANCIAL" if is_financial else "STANDARD_NON_FINANCIAL"
     return {
         "true_sales": sales,
         "true_expenses": expenses,
@@ -92,9 +121,10 @@ def normalize_pl_statement(
         "true_depreciation": depreciation,
         "true_pbt": profit_before_tax,
         "true_net_profit": net_profit,
-        "is_financial": False,
+        "is_financial": is_financial,
         "is_shifted": False,
-        "status": "STANDARD_NON_FINANCIAL",
+        "is_banking_template": False,
+        "status": status,
     }
 
 
@@ -117,10 +147,10 @@ def compute_opm(
     source_opm: float | None = None,
     company_id: str | None = None,
     year: str | None = None,
-    broad_sector: str | None = None,
+    is_banking_template: bool = False,
 ) -> float | None:
-    """Calculate Operating Profit Margin as (operating_profit / sales) * 100 for non-financials, returning None for Financials."""
-    if broad_sector == "Financials":
+    """Calculate Operating Profit Margin as (operating_profit / sales) * 100, returning None for banking templates."""
+    if is_banking_template or (company_id and company_id in BANKING_TEMPLATE_COMPANIES):
         return None
 
     if operating_profit is None or sales is None:
@@ -182,17 +212,18 @@ def compute_roce(
     reserves: float | None,
     borrowings: float | None,
     broad_sector: str | None = None,
+    is_banking_template: bool = False,
 ) -> dict[str, Any]:
-    """Calculate ROCE as EBIT / (equity + reserves + borrowings) * 100, returning None with sector_relative=True for Financials."""
+    """Calculate ROCE as EBIT / Capital Employed, returning None for banking templates but preserving sector_relative flag."""
     is_financials = broad_sector == "Financials"
-    if is_financials:
+    if is_banking_template:
         return {"value": None, "sector_relative": True}
 
     if operating_profit is None or equity_capital is None or reserves is None:
-        return {"value": None, "sector_relative": False}
+        return {"value": None, "sector_relative": is_financials}
     for val in [operating_profit, equity_capital, reserves]:
         if isinstance(val, (float, np.floating)) and np.isnan(val):
-            return {"value": None, "sector_relative": False}
+            return {"value": None, "sector_relative": is_financials}
 
     depr_val = (
         float(depreciation)
@@ -209,10 +240,10 @@ def compute_roce(
     capital_employed = float(equity_capital) + float(reserves) + bor_val
 
     if capital_employed <= 0.0:
-        return {"value": None, "sector_relative": False}
+        return {"value": None, "sector_relative": is_financials}
 
     roce_val = round((ebit / capital_employed) * 100.0, 4)
-    return {"value": roce_val, "sector_relative": False}
+    return {"value": roce_val, "sector_relative": is_financials}
 
 
 def compute_roa(net_profit: float | None, total_assets: float | None) -> float | None:
@@ -279,7 +310,7 @@ def get_financial_statements_data(
 
 
 def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute all profitability ratios across a joined financial statements DataFrame with automated normalization."""
+    """Compute all profitability ratios across a joined financial statements DataFrame with evidence-based normalization."""
     if df.empty:
         return pd.DataFrame()
 
@@ -295,6 +326,7 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
     extreme_flag_list: list[bool] = []
 
     for _, row in out_df.iterrows():
+        comp_id = row.get("company_id")
         broad_sector = row.get("broad_sector")
         norm = normalize_pl_statement(
             sales=row.get("sales"),
@@ -305,6 +337,7 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
             depreciation=row.get("depreciation"),
             profit_before_tax=row.get("profit_before_tax"),
             net_profit=row.get("net_profit"),
+            company_id=comp_id,
             broad_sector=broad_sector,
         )
 
@@ -312,6 +345,7 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
         true_op = norm["true_operating_profit"]
         true_depr = norm["true_depreciation"]
         true_net_profit = norm["true_net_profit"]
+        is_banking_template = norm["is_banking_template"]
         norm_status_list.append(norm["status"])
 
         # NPM
@@ -328,9 +362,9 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
             true_op,
             true_sales,
             source_opm=source_opm,
-            company_id=row.get("company_id"),
+            company_id=comp_id,
             year=row.get("year"),
-            broad_sector=broad_sector,
+            is_banking_template=is_banking_template,
         )
         opm_list.append(opm_val)
 
@@ -350,6 +384,7 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
             row.get("reserves"),
             row.get("borrowings"),
             broad_sector=broad_sector,
+            is_banking_template=is_banking_template,
         )
         roce_val = roce_dict["value"]
         roce_list.append(roce_val)

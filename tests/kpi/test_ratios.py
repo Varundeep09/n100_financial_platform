@@ -3,7 +3,9 @@
 Includes tests for:
 - Standard non-financial companies.
 - Automatic recovery of shifted non-financial companies (HINDUNILVR, CIPLA, COALINDIA, etc.).
-- Financials sector graceful None handling for OPM and ROCE across all 23 Financials.
+- Evidence-based Financials sector handling:
+  * Banking template Financials (AXISBANK, HDFCBANK, etc.) -> OPM=None, ROCE=None, sector_relative=True.
+  * Clean Financials (JIOFIN, IRFC, etc.) -> OPM and ROCE computed normally with sector_relative=True.
 - Extreme value sanity flagging (|ROE| > 200%, |ROA| > 100%) for near-zero equity/asset bases (INDIGO).
 - Missing balance sheet graceful handling (SBIN).
 - Edge cases (zero sales, negative equity, zero assets).
@@ -70,8 +72,8 @@ def test_roce_normal() -> None:
     assert res["sector_relative"] is False
 
 
-def test_roce_financials_sector_none() -> None:
-    """Verify ROCE for Financials sector returns None with sector_relative as True."""
+def test_roce_banking_financials_none() -> None:
+    """Verify ROCE for banking-template Financials returns None with sector_relative as True."""
     res = compute_roce(
         operating_profit=25000.0,
         depreciation=5000.0,
@@ -79,14 +81,15 @@ def test_roce_financials_sector_none() -> None:
         reserves=49000.0,
         borrowings=50000.0,
         broad_sector="Financials",
+        is_banking_template=True,
     )
     assert res["value"] is None
     assert res["sector_relative"] is True
 
 
-def test_opm_financials_sector_none() -> None:
-    """Verify OPM for Financials sector returns None."""
-    assert compute_opm(25000.0, 100000.0, broad_sector="Financials") is None
+def test_opm_banking_financials_none() -> None:
+    """Verify OPM for banking-template Financials returns None."""
+    assert compute_opm(25000.0, 100000.0, is_banking_template=True) is None
 
 
 def test_roa_normal() -> None:
@@ -114,23 +117,13 @@ def test_opm_cross_check_logging() -> None:
     """Verify OPM calculation and discrepancy logging for non-financials."""
     initial_len = len(OPM_DISCREPANCIES)
     opm_match = compute_opm(
-        2000.0,
-        10000.0,
-        source_opm=20.0,
-        company_id="TESTCO",
-        year="2024-03",
-        broad_sector="Materials",
+        2000.0, 10000.0, source_opm=20.0, company_id="TESTCO", year="2024-03"
     )
     assert opm_match == 20.0
     assert len(OPM_DISCREPANCIES) == initial_len
 
     opm_diff = compute_opm(
-        2500.0,
-        10000.0,
-        source_opm=20.0,
-        company_id="TESTCO",
-        year="2024-03",
-        broad_sector="Materials",
+        2500.0, 10000.0, source_opm=20.0, company_id="TESTCO", year="2024-03"
     )
     assert opm_diff == 25.0
     assert len(OPM_DISCREPANCIES) == initial_len + 1
@@ -140,13 +133,14 @@ def test_normalize_pl_statement_shifted_recovery() -> None:
     """Verify automated detection and recovery of shifted non-financial columns."""
     norm = normalize_pl_statement(
         sales=68904.0,
-        expenses=4805.0,  # Other Income in raw Excel for INDIGO
-        operating_profit=52573.0,  # True Expenses for INDIGO
-        opm_percentage=16331.0,  # True Operating Profit for INDIGO
-        other_income=24.0,  # True OPM %
+        expenses=4805.0,
+        operating_profit=52573.0,
+        opm_percentage=16331.0,
+        other_income=24.0,
         depreciation=6406.0,
         profit_before_tax=8043.0,
         net_profit=8167.0,
+        company_id="INDIGO",
         broad_sector="Consumer Discretionary",
     )
     assert norm["is_shifted"] is True
@@ -157,8 +151,8 @@ def test_normalize_pl_statement_shifted_recovery() -> None:
     assert norm["true_other_income"] == 4805.0
 
 
-def test_normalize_pl_statement_financials() -> None:
-    """Verify Financials sector normalization marks true_operating_profit as None."""
+def test_normalize_pl_statement_banking_financials() -> None:
+    """Verify banking Financials normalization marks true_operating_profit as None."""
     norm = normalize_pl_statement(
         sales=109369.0,
         expenses=59474.0,
@@ -168,11 +162,49 @@ def test_normalize_pl_statement_financials() -> None:
         depreciation=1334.0,
         profit_before_tax=33060.0,
         net_profit=24861.0,
+        company_id="AXISBANK",
         broad_sector="Financials",
     )
-    assert norm["is_financial"] is True
+    assert norm["is_banking_template"] is True
     assert norm["true_operating_profit"] is None
-    assert norm["status"] == "FINANCIAL_SECTOR"
+    assert norm["status"] == "BANKING_TEMPLATE_FINANCIAL"
+
+
+def test_normalize_pl_statement_clean_financials() -> None:
+    """Verify clean Financials (JIOFIN) retain genuine operating_profit."""
+    norm = normalize_pl_statement(
+        sales=1855.0,
+        expenses=296.0,
+        operating_profit=1559.0,
+        opm_percentage=84.0,
+        other_income=429.0,
+        depreciation=22.0,
+        profit_before_tax=1956.0,
+        net_profit=1605.0,
+        company_id="JIOFIN",
+        broad_sector="Financials",
+    )
+    assert norm["is_banking_template"] is False
+    assert norm["true_operating_profit"] == 1559.0
+    assert norm["status"] == "CLEAN_FINANCIAL"
+
+
+def test_jiofin_profitability_clean_metrics() -> None:
+    """Verify JIOFIN computes real OPM=84.04% and ROCE=1.10% with sector_relative=True."""
+    if not DB_PATH.exists():
+        pytest.skip("Database db/nifty100.db not present")
+
+    df_jiofin = get_financial_statements_data(company_id="JIOFIN", db_path=DB_PATH)
+    assert not df_jiofin.empty
+    metrics_df = calculate_profitability_metrics(df_jiofin)
+
+    row_2024 = metrics_df[metrics_df["year"] == "2024-03"].iloc[0]
+    assert row_2024["pl_normalization_status"] == "CLEAN_FINANCIAL"
+    assert row_2024["npm_pct"] == pytest.approx(86.52, abs=0.01)
+    assert row_2024["opm_pct"] == pytest.approx(84.04, abs=0.01)
+    assert row_2024["roe_pct"] == pytest.approx(1.15, abs=0.01)
+    assert row_2024["roce_pct"] == pytest.approx(1.10, abs=0.01)
+    assert bool(row_2024["roce_sector_relative"]) is True
 
 
 def test_indigo_profitability_recovered_and_flagged() -> None:
@@ -211,7 +243,7 @@ def test_hindunilvr_profitability_recovered() -> None:
     assert bool(row_2024["extreme_magnitude_flag"]) is False
 
 
-def test_axisbank_profitability_financials_separation() -> None:
+def test_axisbank_profitability_banking_separation() -> None:
     """Verify AXISBANK computes valid NPM/ROE/ROA but returns None for OPM and ROCE."""
     if not DB_PATH.exists():
         pytest.skip("Database db/nifty100.db not present")
@@ -221,7 +253,7 @@ def test_axisbank_profitability_financials_separation() -> None:
     metrics_df = calculate_profitability_metrics(df_axis)
 
     row_2024 = metrics_df[metrics_df["year"] == "2024-03"].iloc[0]
-    assert row_2024["pl_normalization_status"] == "FINANCIAL_SECTOR"
+    assert row_2024["pl_normalization_status"] == "BANKING_TEMPLATE_FINANCIAL"
     assert row_2024["npm_pct"] == pytest.approx(22.73, abs=0.01)
     assert row_2024["opm_pct"] is None
     assert row_2024["roe_pct"] == pytest.approx(15.83, abs=0.01)
