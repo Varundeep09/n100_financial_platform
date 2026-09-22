@@ -5,14 +5,14 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-
 from db.loader import (
     load_all_tables,
     transform_companies,
     transform_profitandloss,
 )
 
-SCHEMA_PATH = Path("db/schema.sql")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SCHEMA_PATH = REPO_ROOT / "db" / "schema.sql"
 
 
 @pytest.fixture

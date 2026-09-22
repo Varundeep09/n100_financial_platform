@@ -1,0 +1,65 @@
+# N100 Financial Platform — Ratio Engine Edge Cases & Schema Alignment Log
+# Date: 2026-09-22 | Status: Production Design Decision Log
+
+====================================================================================================
+1. BACKGROUND & DISCOVERY
+====================================================================================================
+During Sprint 2 Day 8 verification, an extreme OPM anomaly was discovered for AXISBANK (-10,277% to +13,857%).
+A full forensic audit across all 92 companies and 1,073 P&L rows revealed two distinct source data export phenomena
+originating from Screener.in's raw table exports:
+
+A. FINANCIAL SECTOR (19 Companies - Banks, NBFCs, Insurers):
+   - Screener.in reports banking financials using specialized line items (Interest Earned, Interest Expended, 
+     Financing Profit, Financing Margin %, Other Income, Provisions).
+   - In the generic flat export schema `[sales, expenses, operating_profit, opm_percentage, other_income, interest, ...]`:
+     * `sales`              = Total Revenue / Interest Earned (₹ Cr)
+     * `expenses`           = Financing Cost / Interest Expended (₹ Cr)
+     * `operating_profit`   = Operating Expenses (Staff + Admin) (₹ Cr)
+     * `opm_percentage`     = Financing Profit in ₹ Crores (e.g., ₹-10,277 Cr for AXISBANK 2018)
+     * `other_income`       = Financing Margin % (e.g., -22% for AXISBANK 2018)
+     * `interest`           = Non-Interest / Other Income (₹ Cr)
+     * `profit_before_tax`  = PBT (after deducting provisions)
+     * `net_profit`         = True Net Profit (100% genuine)
+     * `eps`                = True EPS (100% genuine)
+
+B. SHIFTED NON-FINANCIALS (6 Companies: HINDUNILVR, CIPLA, COALINDIA, HINDALCO, HEROMOTOCO, INDIGO):
+   - A known Screener scraping column-offset occurred for these 6 companies:
+     * `sales`              = True Revenue (₹ Cr)
+     * `expenses`           = Other Income (₹ Cr)
+     * `operating_profit`   = True Operating Expenses (₹ Cr)
+     * `opm_percentage`     = True Operating Profit (₹ Cr) [Identity: sales - operating_profit = opm_percentage]
+     * `other_income`       = True OPM % (Integer percentage)
+     * `depreciation`       = True Depreciation (₹ Cr)
+     * `profit_before_tax`  = True PBT (₹ Cr)
+     * `tax_percentage`     = True Tax %
+     * `net_profit`         = True Net Profit (₹ Cr)
+     * `eps`                = True EPS
+
+C. STANDARD NON-FINANCIALS (63 Companies: TCS, RELIANCE, INFOSYS, MARUTI, TITAN, ABB, etc.):
+   - 100% clean adherence to standard accounting: `sales - expenses = operating_profit`.
+
+====================================================================================================
+2. RATIO CALCULATION MATRIX & ARCHITECTURAL DECISIONS
+====================================================================================================
+
+Ratio Metric       | Non-Financials (Standard & Shifted Recovered) | Financials (Banks / NBFCs / Insurers)
+-------------------|----------------------------------------------|---------------------------------------------------------
+NPM (%)            | (net_profit / sales) * 100                   | (net_profit / sales) * 100 [Genuine & Valid]
+OPM (%)            | (true_operating_profit / sales) * 100        | NULL / None (Marked NOT_APPLICABLE_FINANCIALS)
+ROE (%)            | (net_profit / total_equity) * 100            | (net_profit / total_equity) * 100 [Genuine & Valid]*
+ROCE (%)           | (EBIT / Capital_Employed) * 100              | NULL / None (Marked sector_relative=True, NOT_APPLICABLE)
+ROA (%)            | (net_profit / total_assets) * 100            | (net_profit / total_assets) * 100 [Genuine & Valid]*
+
+*Note for SBIN: Balance sheet is missing in source data (confirmed gap) -> ROE, ROCE, ROA gracefully return None.
+
+====================================================================================================
+3. AUTOMATED NORMALIZATION IN src/analytics/ratios.py
+====================================================================================================
+The function `normalize_pl_statement()` dynamically inspects each P&L row:
+1. If `broad_sector == 'Financials'`:
+   - Sets `true_operating_profit = None`, `opm_applicable = False`, `roce_applicable = False`.
+   - Prevents misinterpreting bank operating expenses as operating profit.
+2. If `broad_sector != 'Financials'`:
+   - Validates accounting identity `sales - expenses == operating_profit` vs `sales - operating_profit == opm_percentage`.
+   - If shifted pattern detected: automatically recovers `true_operating_profit = opm_percentage` and `true_expenses = operating_profit`.
+   - Corrects 100% of rows for HINDUNILVR, CIPLA, COALINDIA, HINDALCO, HEROMOTOCO, and INDIGO with 0 data loss.
