@@ -47,6 +47,33 @@ BANKING_TEMPLATE_COMPANIES: set[str] = {
     "ICICIPRULI",
 }
 
+# All 23 Financials sector companies where high leverage is structurally normal
+FINANCIALS_SECTOR_COMPANIES: set[str] = {
+    "AXISBANK",
+    "BAJAJFINSV",
+    "BAJAJHLDNG",
+    "BAJFINANCE",
+    "BANKBARODA",
+    "CANBK",
+    "CHOLAFIN",
+    "HDFCBANK",
+    "HDFCLIFE",
+    "ICICIBANK",
+    "ICICIGI",
+    "ICICIPRULI",
+    "INDUSINDBK",
+    "IRFC",
+    "JIOFIN",
+    "KOTAKBANK",
+    "LICI",
+    "PFC",
+    "PNB",
+    "RECLTD",
+    "SBILIFE",
+    "SBIN",
+    "SHRIRAMFIN",
+}
+
 
 def normalize_pl_statement(
     sales: float | None,
@@ -304,11 +331,13 @@ def compute_debt_to_equity(
 
 def check_high_leverage_flag(
     debt_to_equity: float | None,
+    broad_sector: str | None = None,
     company_id: str | None = None,
-    is_banking_template: bool = False,
 ) -> bool:
-    """Flag high leverage if D/E > 5 and company is NOT in confirmed banking-template companies."""
-    if is_banking_template or (company_id and company_id in BANKING_TEMPLATE_COMPANIES):
+    """Flag high leverage if D/E > 5 and company is NOT in the Financials sector."""
+    if broad_sector == "Financials":
+        return False
+    if company_id and company_id in FINANCIALS_SECTOR_COMPANIES:
         return False
     if debt_to_equity is None or (
         isinstance(debt_to_equity, (float, np.floating)) and np.isnan(debt_to_equity)
@@ -559,8 +588,8 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
         # 8. High Leverage Flag
         high_lev_flag = check_high_leverage_flag(
             debt_to_equity=de_val,
+            broad_sector=broad_sector,
             company_id=comp_id,
-            is_banking_template=is_banking_template,
         )
         high_lev_list.append(high_lev_flag)
 

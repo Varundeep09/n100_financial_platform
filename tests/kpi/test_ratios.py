@@ -8,7 +8,8 @@ Includes tests for:
 - Automatic recovery of shifted non-financial companies (HINDUNILVR, CIPLA, COALINDIA, etc.).
 - Evidence-based Financials sector handling:
   * Banking template Financials (AXISBANK, HDFCBANK, etc.) -> OPM=None, ROCE=None, ICR=None ('Not Applicable (Banking Template)').
-  * Clean Financials (JIOFIN, IRFC, etc.) -> OPM, ROCE, ICR computed normally with sector_relative=True.
+  * Clean Financials (JIOFIN, IRFC, RECLTD, etc.) -> OPM, ROCE, ICR computed normally with sector_relative=True.
+- Sector-based high leverage exemption: all 23 Financials sector companies are exempt from high_leverage_flag.
 - Extreme value sanity flagging (|ROE| > 200%, |ROA| > 100%) for near-zero equity/asset bases (INDIGO).
 - Missing balance sheet graceful handling (SBIN).
 - Edge cases (zero sales, negative equity, zero assets, zero borrowings, zero interest).
@@ -18,7 +19,7 @@ from pathlib import Path
 
 import pytest
 from src.analytics.ratios import (
-    BANKING_TEMPLATE_COMPANIES,
+    FINANCIALS_SECTOR_COMPANIES,
     OPM_DISCREPANCIES,
     calculate_profitability_metrics,
     check_extreme_magnitude_flag,
@@ -232,28 +233,70 @@ def test_debt_to_equity_negative_or_zero_equity_returns_none() -> None:
     assert compute_debt_to_equity(None, 100.0, 500.0) is None
 
 
-def test_high_leverage_flag_normal_and_clean_financials() -> None:
-    """Verify high leverage flag triggers if D/E > 5 for non-banking and clean financials."""
+def test_high_leverage_flag_normal_and_financials_exemption() -> None:
+    """Verify high leverage flag triggers for non-financials, but exempts all Financials."""
     # Non-financial company with D/E > 5 -> True
     assert check_high_leverage_flag(5.5, company_id="TATAMOTORS") is True
+    assert (
+        check_high_leverage_flag(
+            5.5, broad_sector="Consumer Discretionary", company_id="TATAMOTORS"
+        )
+        is True
+    )
+
     # Non-financial company with D/E <= 5 -> False
     assert check_high_leverage_flag(2.1, company_id="RELIANCE") is False
-    # Clean Financials (e.g. IRFC) with D/E > 5 -> True
-    assert check_high_leverage_flag(8.38, company_id="IRFC") is True
-    # Clean Financials (e.g. JIOFIN) with D/E <= 5 -> False
-    assert check_high_leverage_flag(0.0, company_id="JIOFIN") is False
+    assert (
+        check_high_leverage_flag(2.1, broad_sector="Energy", company_id="RELIANCE")
+        is False
+    )
+
+    # Financials broad_sector with D/E > 5 -> False (structurally normal for financial lenders)
+    assert check_high_leverage_flag(8.38, broad_sector="Financials") is False
+    assert (
+        check_high_leverage_flag(8.38, broad_sector="Financials", company_id="IRFC")
+        is False
+    )
+    assert (
+        check_high_leverage_flag(6.42, broad_sector="Financials", company_id="RECLTD")
+        is False
+    )
+
+    # Clean Financials with D/E <= 5 -> False
+    assert (
+        check_high_leverage_flag(0.0, broad_sector="Financials", company_id="JIOFIN")
+        is False
+    )
+
     # None D/E -> False
+    assert check_high_leverage_flag(None, broad_sector="Financials") is False
     assert check_high_leverage_flag(None, company_id="SBIN") is False
 
 
-def test_high_leverage_flag_banking_template_excluded() -> None:
-    """Verify high leverage flag is False for the 16 banking-template companies even if D/E > 5."""
-    for bank_ticker in ["AXISBANK", "HDFCBANK", "SBIN", "BAJFINANCE", "PFC"]:
-        assert bank_ticker in BANKING_TEMPLATE_COMPANIES
-        assert check_high_leverage_flag(8.5, company_id=bank_ticker) is False
+def test_high_leverage_flag_financials_sector_excluded() -> None:
+    """Verify high leverage flag is False for all Financials companies (banks, NBFCs, lenders)."""
+    # 1. Broad sector check directly
+    assert check_high_leverage_flag(8.5, broad_sector="Financials") is False
+    assert check_high_leverage_flag(15.0, broad_sector="Financials") is False
+
+    # 2. Check representative companies across banks, NBFCs, and specialty lenders
+    sample_financials = [
+        "AXISBANK",
+        "HDFCBANK",
+        "SBIN",
+        "BAJFINANCE",
+        "PFC",
+        "IRFC",
+        "RECLTD",
+    ]
+    for fin_ticker in sample_financials:
+        assert fin_ticker in FINANCIALS_SECTOR_COMPANIES
+        # Company ID lookup
+        assert check_high_leverage_flag(8.5, company_id=fin_ticker) is False
+        # Full parameters
         assert (
             check_high_leverage_flag(
-                10.0, company_id=bank_ticker, is_banking_template=True
+                8.5, broad_sector="Financials", company_id=fin_ticker
             )
             is False
         )
@@ -394,8 +437,8 @@ def test_jiofin_profitability_clean_metrics() -> None:
     assert row_2024["net_debt"] < 0  # Investments > Borrowings
 
 
-def test_irfc_clean_financials_high_leverage_flag() -> None:
-    """Verify IRFC computes valid high D/E and triggers high_leverage_flag as a clean Financial."""
+def test_irfc_clean_financials_leverage_and_icr() -> None:
+    """Verify IRFC computes valid high D/E with high_leverage_flag=False (Financials exemption), while ICR risk flag triggers."""
     if not DB_PATH.exists():
         pytest.skip("Database db/nifty100.db not present")
 
@@ -407,9 +450,34 @@ def test_irfc_clean_financials_high_leverage_flag() -> None:
 
     assert row_2024["pl_normalization_status"] == "CLEAN_FINANCIAL"
     assert row_2024["debt_to_equity"] > 5.0
-    assert bool(row_2024["high_leverage_flag"]) is True
+    # Sector-based exemption: lenders/NBFCs do not trigger misleading high leverage risk
+    assert bool(row_2024["high_leverage_flag"]) is False
+    # ICR < 1.5 risk flag remains active and unaffected
     assert row_2024["icr"] is not None
+    assert row_2024["icr"] == pytest.approx(1.32, abs=0.01)
     assert row_2024["icr_label"] == "Normal"
+    assert bool(row_2024["icr_risk_flag"]) is True
+
+
+def test_recltd_clean_financials_leverage_and_icr() -> None:
+    """Verify RECLTD computes high D/E with high_leverage_flag=False (Financials exemption) and valid ICR."""
+    if not DB_PATH.exists():
+        pytest.skip("Database db/nifty100.db not present")
+
+    df_rec = get_financial_statements_data(company_id="RECLTD", db_path=DB_PATH)
+    assert not df_rec.empty
+
+    metrics_df = calculate_profitability_metrics(df_rec)
+    row_2024 = metrics_df[metrics_df["year"] == "2024-03"].iloc[0]
+
+    assert row_2024["pl_normalization_status"] == "CLEAN_FINANCIAL"
+    assert row_2024["debt_to_equity"] > 5.0
+    # Sector-based exemption
+    assert bool(row_2024["high_leverage_flag"]) is False
+    assert row_2024["icr"] is not None
+    assert row_2024["icr"] == pytest.approx(1.60, abs=0.01)
+    assert row_2024["icr_label"] == "Normal"
+    assert bool(row_2024["icr_risk_flag"]) is False
 
 
 def test_indigo_profitability_recovered_and_flagged() -> None:
@@ -477,7 +545,9 @@ def test_axisbank_profitability_banking_separation() -> None:
     assert row_2024["roa_pct"] == pytest.approx(1.64, abs=0.01)
     assert bool(row_2024["extreme_magnitude_flag"]) is False
     # Day 9 leverage metrics
-    assert bool(row_2024["high_leverage_flag"]) is False  # Exempt from banking template
+    assert (
+        bool(row_2024["high_leverage_flag"]) is False
+    )  # Exempt from Financials broad sector
     assert row_2024["icr"] is None
     assert row_2024["icr_label"] == "Not Applicable (Banking Template)"
     assert bool(row_2024["icr_risk_flag"]) is False
