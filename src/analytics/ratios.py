@@ -1,11 +1,12 @@
-"""Profitability ratio computation engine (NPM, OPM, ROE, ROCE, ROA).
+"""Financial ratio computation engine (Profitability, Leverage, and Efficiency).
 
-Handles:
-- Standard non-financial companies.
-- Automatic recovery of shifted columns for affected non-financials (HINDUNILVR, CIPLA, COALINDIA, HINDALCO, HEROMOTOCO, INDIGO).
+Includes:
+- Profitability: NPM, OPM, ROE, ROCE, ROA.
+- Leverage & Solvency: Debt-to-Equity, High Leverage Flag, Interest Coverage Ratio (ICR), Net Debt.
+- Efficiency: Asset Turnover.
 - Evidence-based Financials sector handling:
-  * 16 confirmed banking/financing-template companies (where operating_profit is Operating Expenses/Financing Profit) -> OPM=None, ROCE=None, sector_relative=True.
-  * 7 clean Financials (JIOFIN, IRFC, RECLTD, BAJAJFINSV, BAJAJHLDNG, LICI, SBILIFE) -> Compute real OPM & ROCE, keeping sector_relative=True.
+  * 16 confirmed banking/financing-template companies (where operating_profit is Operating Expenses/Financing Profit) -> OPM=None, ROCE=None, ICR=None ('Not Applicable (Banking Template)').
+  * 7 clean Financials (JIOFIN, IRFC, RECLTD, BAJAJFINSV, BAJAJHLDNG, LICI, SBILIFE) -> Compute real OPM, ROCE, ICR normally, keeping sector_relative=True.
 - Extreme value sanity flagging (|ROE| > 200%, |ROA| > 100%, |ROCE| > 200%) for near-zero equity/asset bases (INDIGO).
 - Graceful None handling for zero/negative denominators or missing balance sheets (e.g. SBIN).
 """
@@ -272,6 +273,144 @@ def check_extreme_magnitude_flag(
     return bool(roa is not None and abs(roa) > 100.0)
 
 
+# =============================================================================
+# LEVERAGE & EFFICIENCY RATIOS (DAY 9)
+# =============================================================================
+
+
+def compute_debt_to_equity(
+    borrowings: float | None,
+    equity_capital: float | None,
+    reserves: float | None,
+) -> float | None:
+    """Calculate Debt-to-Equity as borrowings / (equity_capital + reserves), returning 0 if borrowings == 0."""
+    if equity_capital is None or reserves is None:
+        return None
+    for val in [equity_capital, reserves]:
+        if isinstance(val, (float, np.floating)) and np.isnan(val):
+            return None
+    total_equity = float(equity_capital) + float(reserves)
+    if total_equity <= 0.0:
+        return None
+    if borrowings is None or (
+        isinstance(borrowings, (float, np.floating)) and np.isnan(borrowings)
+    ):
+        return None
+    b_val = float(borrowings)
+    if abs(b_val) < 1e-9:
+        return 0.0
+    return round(b_val / total_equity, 4)
+
+
+def check_high_leverage_flag(
+    debt_to_equity: float | None,
+    company_id: str | None = None,
+    is_banking_template: bool = False,
+) -> bool:
+    """Flag high leverage if D/E > 5 and company is NOT in confirmed banking-template companies."""
+    if is_banking_template or (company_id and company_id in BANKING_TEMPLATE_COMPANIES):
+        return False
+    if debt_to_equity is None or (
+        isinstance(debt_to_equity, (float, np.floating)) and np.isnan(debt_to_equity)
+    ):
+        return False
+    return float(debt_to_equity) > 5.0
+
+
+def compute_interest_coverage(
+    operating_profit: float | None,
+    other_income: float | None = None,
+    interest: float | None = None,
+    company_id: str | None = None,
+    is_banking_template: bool = False,
+) -> dict[str, Any]:
+    """Calculate Interest Coverage Ratio (ICR) as (operating_profit + other_income) / interest."""
+    if is_banking_template or (company_id and company_id in BANKING_TEMPLATE_COMPANIES):
+        return {
+            "value": None,
+            "label": "Not Applicable (Banking Template)",
+            "risk_flag": False,
+        }
+
+    if interest is None or (
+        isinstance(interest, (float, np.floating)) and np.isnan(interest)
+    ):
+        return {
+            "value": None,
+            "label": "Debt Free",
+            "risk_flag": False,
+        }
+
+    i_val = float(interest)
+    if abs(i_val) < 1e-9:
+        return {
+            "value": None,
+            "label": "Debt Free",
+            "risk_flag": False,
+        }
+
+    if operating_profit is None or (
+        isinstance(operating_profit, (float, np.floating))
+        and np.isnan(operating_profit)
+    ):
+        return {
+            "value": None,
+            "label": "Debt Free",
+            "risk_flag": False,
+        }
+
+    op_val = float(operating_profit)
+    oth_val = (
+        float(other_income)
+        if other_income is not None and not np.isnan(other_income)
+        else 0.0
+    )
+
+    icr_val = round((op_val + oth_val) / i_val, 4)
+    risk_flag = icr_val < 1.5
+
+    return {
+        "value": icr_val,
+        "label": "Normal",
+        "risk_flag": risk_flag,
+    }
+
+
+def compute_net_debt(
+    borrowings: float | None,
+    investments: float | None = None,
+) -> float | None:
+    """Calculate Net Debt as borrowings - investments."""
+    if borrowings is None or (
+        isinstance(borrowings, (float, np.floating)) and np.isnan(borrowings)
+    ):
+        return None
+    b_val = float(borrowings)
+    inv_val = (
+        float(investments)
+        if investments is not None and not np.isnan(investments)
+        else 0.0
+    )
+    return round(b_val - inv_val, 4)
+
+
+def compute_asset_turnover(
+    sales: float | None,
+    total_assets: float | None,
+) -> float | None:
+    """Calculate Asset Turnover as sales / total_assets, returning None if total_assets <= 0."""
+    if sales is None or total_assets is None:
+        return None
+    if isinstance(sales, (float, np.floating)) and np.isnan(sales):
+        return None
+    if isinstance(total_assets, (float, np.floating)) and np.isnan(total_assets):
+        return None
+    a_val = float(total_assets)
+    if a_val <= 0.0:
+        return None
+    return round(float(sales) / a_val, 4)
+
+
 def get_financial_statements_data(
     company_id: str | None = None,
     db_path: Path = DB_PATH,
@@ -310,12 +449,13 @@ def get_financial_statements_data(
 
 
 def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute all profitability ratios across a joined financial statements DataFrame with evidence-based normalization."""
+    """Compute all profitability, leverage, and efficiency ratios across a joined financial statements DataFrame."""
     if df.empty:
         return pd.DataFrame()
 
     out_df = df.copy()
 
+    # Profitability lists
     npm_list: list[float | None] = []
     opm_list: list[float | None] = []
     roe_list: list[float | None] = []
@@ -324,6 +464,15 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
     roa_list: list[float | None] = []
     norm_status_list: list[str] = []
     extreme_flag_list: list[bool] = []
+
+    # Leverage & Efficiency lists (Day 9)
+    de_list: list[float | None] = []
+    high_lev_list: list[bool] = []
+    icr_list: list[float | None] = []
+    icr_label_list: list[str] = []
+    icr_risk_list: list[bool] = []
+    net_debt_list: list[float | None] = []
+    asset_turnover_list: list[float | None] = []
 
     for _, row in out_df.iterrows():
         comp_id = row.get("company_id")
@@ -343,16 +492,17 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
 
         true_sales = norm["true_sales"]
         true_op = norm["true_operating_profit"]
+        true_oth = norm["true_other_income"]
         true_depr = norm["true_depreciation"]
         true_net_profit = norm["true_net_profit"]
         is_banking_template = norm["is_banking_template"]
         norm_status_list.append(norm["status"])
 
-        # NPM
+        # 1. NPM
         npm_val = compute_npm(true_net_profit, true_sales)
         npm_list.append(npm_val)
 
-        # OPM
+        # 2. OPM
         source_opm = (
             norm["true_other_income"]
             if norm["is_shifted"]
@@ -368,7 +518,7 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
         )
         opm_list.append(opm_val)
 
-        # ROE
+        # 3. ROE
         roe_val = compute_roe(
             true_net_profit,
             row.get("equity_capital"),
@@ -376,7 +526,7 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
         )
         roe_list.append(roe_val)
 
-        # ROCE
+        # 4. ROCE
         roce_dict = compute_roce(
             true_op,
             true_depr,
@@ -390,14 +540,57 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
         roce_list.append(roce_val)
         roce_sec_list.append(roce_dict["sector_relative"])
 
-        # ROA
+        # 5. ROA
         roa_val = compute_roa(true_net_profit, row.get("total_assets"))
         roa_list.append(roa_val)
 
-        # Extreme magnitude flag
+        # 6. Extreme magnitude flag
         extreme_flag = check_extreme_magnitude_flag(roe_val, roce_val, roa_val)
         extreme_flag_list.append(extreme_flag)
 
+        # 7. Debt-to-Equity
+        de_val = compute_debt_to_equity(
+            borrowings=row.get("borrowings"),
+            equity_capital=row.get("equity_capital"),
+            reserves=row.get("reserves"),
+        )
+        de_list.append(de_val)
+
+        # 8. High Leverage Flag
+        high_lev_flag = check_high_leverage_flag(
+            debt_to_equity=de_val,
+            company_id=comp_id,
+            is_banking_template=is_banking_template,
+        )
+        high_lev_list.append(high_lev_flag)
+
+        # 9. Interest Coverage Ratio (ICR)
+        icr_dict = compute_interest_coverage(
+            operating_profit=true_op,
+            other_income=true_oth,
+            interest=row.get("interest"),
+            company_id=comp_id,
+            is_banking_template=is_banking_template,
+        )
+        icr_list.append(icr_dict["value"])
+        icr_label_list.append(icr_dict["label"])
+        icr_risk_list.append(icr_dict["risk_flag"])
+
+        # 10. Net Debt
+        net_debt_val = compute_net_debt(
+            borrowings=row.get("borrowings"),
+            investments=row.get("investments"),
+        )
+        net_debt_list.append(net_debt_val)
+
+        # 11. Asset Turnover
+        at_val = compute_asset_turnover(
+            sales=true_sales,
+            total_assets=row.get("total_assets"),
+        )
+        asset_turnover_list.append(at_val)
+
+    # Attach columns to DataFrame
     out_df["npm_pct"] = npm_list
     out_df["opm_pct"] = opm_list
     out_df["roe_pct"] = roe_list
@@ -406,5 +599,14 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
     out_df["roa_pct"] = roa_list
     out_df["extreme_magnitude_flag"] = extreme_flag_list
     out_df["pl_normalization_status"] = norm_status_list
+
+    # Leverage & Efficiency columns
+    out_df["debt_to_equity"] = de_list
+    out_df["high_leverage_flag"] = high_lev_list
+    out_df["icr"] = icr_list
+    out_df["icr_label"] = icr_label_list
+    out_df["icr_risk_flag"] = icr_risk_list
+    out_df["net_debt"] = net_debt_list
+    out_df["asset_turnover"] = asset_turnover_list
 
     return out_df
