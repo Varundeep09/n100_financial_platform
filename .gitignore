@@ -7,7 +7,8 @@ __pycache__/
 # Data - raw, supporting, and local processed outputs (confidential / artifacts)
 data/raw/
 data/supporting/
-data/processed/
+data/processed/*
+!data/processed/capital_allocation.csv
 data/*.xlsx
 *.xlsx
 
