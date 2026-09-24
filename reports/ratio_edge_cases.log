@@ -84,3 +84,28 @@ whenever:
 - |ROCE| > 200%
 - |ROA| > 100%
 This preserves pure mathematical integrity while alerting downstream analytics and dashboard screeners.
+
+====================================================================================================
+4. CASH FLOW KPIS & CAPITAL ALLOCATION CLASSIFIER (DAY 11)
+====================================================================================================
+A. FINANCIALS SECTOR & LENDING NBFC CARVE-OUT FROM CFO QUALITY SCORE:
+   - For industrial and commercial firms, a trailing CFO / PAT ratio < 0.5 signals aggressive revenue
+     recognition or uncollected receivables ('Accrual Risk').
+   - For lending institutions (IRFC, RECLTD, PFC, and commercial banks), operating cash flow structurally
+     includes loan disbursements and advances as cash outflows, which are funded by debt issuances
+     or deposits recorded under financing/operating activities.
+   - For example, IRFC\'s ₹-89,907 Cr CFO in FY21 was matched by ₹+90,202 Cr CFF as it financed railway rolling stock,
+     generating an apparent CFO/PAT score of -10.80.
+   - Categorizing IRFC or other lending institutions as 'Accrual Risk' represents a fundamental category error.
+   - Decision: All 23 Financials sector companies (FINANCIALS_SECTOR_COMPANIES) are exempted from the CFO Quality
+     classification, returning value = None and label = 'Not Applicable (Financials Sector)'.
+
+B. INTENTIONAL SIGN PATTERN EXTENSION FOR CAPITAL ALLOCATION:
+   - The classical 8-pattern matrix enumerates the primary combinations of (CFO, CFI, CFF).
+   - In real financial history, companies experiencing acute operating distress combined with debt service/repayment
+     (such as INDIGO during FY21 COVID-19 grounding) exhibit (-, +, -):
+     * CFO < 0: operating cash burn
+     * CFI > 0: liquidating investments/assets to fund liquidity
+     * CFF < 0: debt repayment or negative financing flows
+   - In accordance with empirical accounting literature (Dickinson\'s lifecycle distress phase), (-, +, -) is
+     deliberately mapped to 'Distress Signal' alongside (-, +, +) rather than failing or remaining unclassified.

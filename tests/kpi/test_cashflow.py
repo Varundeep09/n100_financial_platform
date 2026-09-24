@@ -292,6 +292,24 @@ def test_real_database_banking_template_exclusion_and_clean_financials():
     assert cipla_2024["pattern_label"] == "Shareholder Returns"
 
 
+def test_financials_sector_cfo_quality_exemption():
+    """Verify lending NBFCs and banks are exempted from CFO Quality Score to prevent false Accrual Risk flags."""
+    # Direct function call with is_financial / company_id
+    res_irfc = compute_cfo_quality_score(
+        [100.0] * 5, [100.0] * 5, company_id="IRFC", broad_sector="Financials"
+    )
+    assert res_irfc.value is None
+    assert res_irfc.label == "Not Applicable (Financials Sector)"
+
+    # Database integration check across lending NBFCs and banks
+    for cid in ["IRFC", "RECLTD", "PFC", "SBIN", "HDFCBANK"]:
+        raw = get_cashflow_data(company_id=cid)
+        kpi = calculate_cashflow_kpis(raw)
+        row_2024 = kpi[kpi["year"] == "2024-03"].iloc[0]
+        assert pd.isna(row_2024["cfo_quality_score"])
+        assert row_2024["cfo_quality_label"] == "Not Applicable (Financials Sector)"
+
+
 def test_capital_allocation_csv_export_integrity(tmp_path):
     """Verify generate_capital_allocation_csv creates a complete 1,063 row table with required columns."""
     csv_file = tmp_path / "test_capital_allocation.csv"

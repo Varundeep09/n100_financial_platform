@@ -48,7 +48,11 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from src.analytics.ratios import BANKING_TEMPLATE_COMPANIES, normalize_pl_statement
+from src.analytics.ratios import (
+    BANKING_TEMPLATE_COMPANIES,
+    FINANCIALS_SECTOR_COMPANIES,
+    normalize_pl_statement,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +148,9 @@ def compute_fcf(
 def compute_cfo_quality_score(
     cfo_or_history: Any,
     pat_history: Any = None,
+    company_id: str | None = None,
+    broad_sector: str | None = None,
+    is_financial: bool = False,
 ) -> MetricResult:
     """Calculate CFO Quality Score as trailing 5-year average of CFO / PAT.
 
@@ -152,11 +159,23 @@ def compute_cfo_quality_score(
       - 0.5 - 1.0 -> 'Moderate'
       - < 0.5     -> 'Accrual Risk'
 
+    Financials Sector Carve-Out:
+      - For lending institutions (IRFC, RECLTD, PFC, and commercial banks), operating
+        cash flows structurally include loan disbursements/advances as cash outflows.
+        Evaluating CFO / PAT as 'Accrual Risk' is economically misleading.
+      - Financials companies return value=None, label='Not Applicable (Financials Sector)'.
+
     Returns (None, None) if:
       - Fewer than 5 periods exist
       - PAT == 0 for any period in the 5-year window
       - Any period has missing/NaN data
     """
+    if (
+        is_financial
+        or broad_sector == "Financials"
+        or (company_id and company_id in FINANCIALS_SECTOR_COMPANIES)
+    ):
+        return MetricResult(value=None, label="Not Applicable (Financials Sector)")
     if pat_history is not None:
         cfo_list = list(cfo_or_history)
         pat_list = list(pat_history)
@@ -432,58 +451,67 @@ def calculate_cashflow_kpis(df: pd.DataFrame) -> pd.DataFrame:
             fcf_val = compute_fcf(cfo_raw, cfi_raw)
             g_fcf.append(fcf_val)
 
+            is_financial = (broad_sector == "Financials") or (
+                str(comp_id) in FINANCIALS_SECTOR_COMPANIES if comp_id else False
+            )
+
             # 2. CFO Quality Score (trailing 5 consecutive calendar years matching exact month)
-            try:
-                curr_y = int(curr_year_str[:4])
-                curr_m = curr_year_str[5:7]
-            except (ValueError, IndexError):
-                curr_y = None
-                curr_m = ""
-
-            valid_window = True
-            trailing_cfos: list[float] = []
-            trailing_pats: list[float] = []
-
-            if curr_y is None or not curr_m:
-                valid_window = False
-            else:
-                for offset in range(5):
-                    target_year_str = f"{curr_y - offset:04d}-{curr_m}"
-                    if target_year_str not in year_row_map:
-                        valid_window = False
-                        break
-                    row_t = year_row_map[target_year_str]
-                    pat = row_t.get("net_profit")
-                    cfo = row_t.get("operating_activity")
-
-                    if pat is None or (
-                        isinstance(pat, (float, np.floating)) and np.isnan(pat)
-                    ):
-                        valid_window = False
-                        break
-                    if cfo is None or (
-                        isinstance(cfo, (float, np.floating)) and np.isnan(cfo)
-                    ):
-                        valid_window = False
-                        break
-
-                    pat_val = float(pat)
-                    cfo_val = float(cfo)
-
-                    if abs(pat_val) < 1e-9:
-                        valid_window = False
-                        break
-
-                    trailing_cfos.append(cfo_val)
-                    trailing_pats.append(pat_val)
-
-            if valid_window and len(trailing_cfos) == 5:
-                # Reverse so trailing order is chronological
-                q_res = compute_cfo_quality_score(
-                    trailing_cfos[::-1], trailing_pats[::-1]
+            if is_financial:
+                q_res = MetricResult(
+                    value=None, label="Not Applicable (Financials Sector)"
                 )
             else:
-                q_res = MetricResult(value=None, label=None)
+                try:
+                    curr_y = int(curr_year_str[:4])
+                    curr_m = curr_year_str[5:7]
+                except (ValueError, IndexError):
+                    curr_y = None
+                    curr_m = ""
+
+                valid_window = True
+                trailing_cfos: list[float] = []
+                trailing_pats: list[float] = []
+
+                if curr_y is None or not curr_m:
+                    valid_window = False
+                else:
+                    for offset in range(5):
+                        target_year_str = f"{curr_y - offset:04d}-{curr_m}"
+                        if target_year_str not in year_row_map:
+                            valid_window = False
+                            break
+                        row_t = year_row_map[target_year_str]
+                        pat = row_t.get("net_profit")
+                        cfo = row_t.get("operating_activity")
+
+                        if pat is None or (
+                            isinstance(pat, (float, np.floating)) and np.isnan(pat)
+                        ):
+                            valid_window = False
+                            break
+                        if cfo is None or (
+                            isinstance(cfo, (float, np.floating)) and np.isnan(cfo)
+                        ):
+                            valid_window = False
+                            break
+
+                        pat_val = float(pat)
+                        cfo_val = float(cfo)
+
+                        if abs(pat_val) < 1e-9:
+                            valid_window = False
+                            break
+
+                        trailing_cfos.append(cfo_val)
+                        trailing_pats.append(pat_val)
+
+                if valid_window and len(trailing_cfos) == 5:
+                    # Reverse so trailing order is chronological
+                    q_res = compute_cfo_quality_score(
+                        trailing_cfos[::-1], trailing_pats[::-1]
+                    )
+                else:
+                    q_res = MetricResult(value=None, label=None)
 
             g_cfo_q_score.append(q_res.value)
             g_cfo_q_label.append(q_res.label)

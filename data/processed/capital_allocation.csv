@@ -113,7 +113,7 @@ AXISBANK,2013-03,+,-,+,Mixed
 AXISBANK,2014-03,+,-,+,Mixed
 AXISBANK,2015-03,-,-,+,Growth Funded by Debt
 AXISBANK,2016-03,-,+,+,Distress Signal
-AXISBANK,2017-03,+,-,-,Shareholder Returns
+AXISBANK,2017-03,+,-,-,Reinvestor
 AXISBANK,2018-03,-,-,+,Growth Funded by Debt
 AXISBANK,2019-03,+,-,+,Mixed
 AXISBANK,2020-03,+,-,+,Mixed
@@ -171,12 +171,12 @@ BANKBARODA,2013-03,+,-,-,Reinvestor
 BANKBARODA,2014-03,+,-,+,Mixed
 BANKBARODA,2015-03,+,-,-,Reinvestor
 BANKBARODA,2016-03,-,-,-,Pre-Revenue
-BANKBARODA,2017-03,+,-,-,Shareholder Returns
+BANKBARODA,2017-03,+,-,-,Reinvestor
 BANKBARODA,2018-03,-,-,+,Growth Funded by Debt
 BANKBARODA,2019-03,-,-,+,Growth Funded by Debt
 BANKBARODA,2020-03,+,-,+,Mixed
 BANKBARODA,2021-03,-,-,-,Pre-Revenue
-BANKBARODA,2022-03,+,-,-,Shareholder Returns
+BANKBARODA,2022-03,+,-,-,Reinvestor
 BANKBARODA,2023-03,-,-,-,Pre-Revenue
 BANKBARODA,2024-03,-,-,+,Growth Funded by Debt
 BEL,2013-03,-,+,-,Distress Signal
@@ -257,12 +257,12 @@ CANBK,2015-03,+,-,-,Reinvestor
 CANBK,2016-03,+,-,-,Reinvestor
 CANBK,2017-03,+,-,+,Mixed
 CANBK,2018-03,-,-,+,Growth Funded by Debt
-CANBK,2019-03,+,-,-,Shareholder Returns
+CANBK,2019-03,+,-,-,Reinvestor
 CANBK,2020-03,-,-,+,Growth Funded by Debt
 CANBK,2021-03,+,-,+,Mixed
 CANBK,2022-03,+,-,+,Mixed
 CANBK,2023-03,-,-,+,Growth Funded by Debt
-CANBK,2024-03,+,-,-,Shareholder Returns
+CANBK,2024-03,+,-,-,Reinvestor
 CHOLAFIN,2013-03,-,+,+,Distress Signal
 CHOLAFIN,2014-03,-,-,+,Growth Funded by Debt
 CHOLAFIN,2015-03,-,-,+,Growth Funded by Debt
@@ -457,12 +457,12 @@ HDFCLIFE,2015-03,+,-,-,Reinvestor
 HDFCLIFE,2016-03,+,-,-,Reinvestor
 HDFCLIFE,2017-03,+,-,-,Reinvestor
 HDFCLIFE,2018-03,+,-,-,Reinvestor
-HDFCLIFE,2019-03,+,-,-,Shareholder Returns
+HDFCLIFE,2019-03,+,-,-,Reinvestor
 HDFCLIFE,2020-03,+,-,+,Mixed
 HDFCLIFE,2021-03,+,-,+,Mixed
-HDFCLIFE,2022-03,+,-,-,Shareholder Returns
+HDFCLIFE,2022-03,+,-,-,Reinvestor
 HDFCLIFE,2023-03,+,-,+,Mixed
-HDFCLIFE,2024-03,+,-,-,Shareholder Returns
+HDFCLIFE,2024-03,+,-,-,Reinvestor
 HEROMOTOCO,2014-03,+,-,-,Reinvestor
 HEROMOTOCO,2015-03,+,+,-,Liquidating Assets
 HEROMOTOCO,2016-03,+,-,-,Reinvestor
@@ -502,11 +502,11 @@ ICICIBANK,2013-03,+,-,+,Mixed
 ICICIBANK,2014-03,+,-,+,Mixed
 ICICIBANK,2015-03,-,-,+,Growth Funded by Debt
 ICICIBANK,2016-03,+,-,+,Mixed
-ICICIBANK,2017-03,+,-,-,Shareholder Returns
+ICICIBANK,2017-03,+,-,-,Reinvestor
 ICICIBANK,2018-03,+,-,+,Mixed
-ICICIBANK,2019-03,+,-,-,Shareholder Returns
+ICICIBANK,2019-03,+,-,-,Reinvestor
 ICICIBANK,2020-03,+,-,+,Mixed
-ICICIBANK,2021-03,+,-,-,Shareholder Returns
+ICICIBANK,2021-03,+,-,-,Reinvestor
 ICICIBANK,2022-03,+,-,+,Mixed
 ICICIBANK,2023-03,-,-,+,Growth Funded by Debt
 ICICIBANK,2024-03,+,-,+,Mixed
@@ -515,24 +515,24 @@ ICICIGI,2014-03,+,-,+,Mixed
 ICICIGI,2015-03,-,+,-,Distress Signal
 ICICIGI,2016-03,+,-,-,Reinvestor
 ICICIGI,2017-03,+,-,+,Mixed
-ICICIGI,2018-03,+,-,-,Shareholder Returns
-ICICIGI,2019-03,+,-,-,Shareholder Returns
-ICICIGI,2020-03,+,-,-,Shareholder Returns
-ICICIGI,2021-03,+,-,-,Shareholder Returns
+ICICIGI,2018-03,+,-,-,Reinvestor
+ICICIGI,2019-03,+,-,-,Reinvestor
+ICICIGI,2020-03,+,-,-,Reinvestor
+ICICIGI,2021-03,+,-,-,Reinvestor
 ICICIGI,2022-03,+,+,-,Liquidating Assets
-ICICIGI,2023-03,+,-,-,Shareholder Returns
-ICICIGI,2024-03,+,-,-,Shareholder Returns
+ICICIGI,2023-03,+,-,-,Reinvestor
+ICICIGI,2024-03,+,-,-,Reinvestor
 ICICIPRULI,2013-03,-,+,-,Distress Signal
 ICICIPRULI,2014-03,-,+,-,Distress Signal
 ICICIPRULI,2015-03,+,-,-,Reinvestor
 ICICIPRULI,2016-03,+,+,-,Liquidating Assets
 ICICIPRULI,2017-03,+,-,-,Reinvestor
-ICICIPRULI,2018-03,+,-,-,Shareholder Returns
-ICICIPRULI,2019-03,+,-,-,Shareholder Returns
-ICICIPRULI,2020-03,+,-,-,Shareholder Returns
+ICICIPRULI,2018-03,+,-,-,Reinvestor
+ICICIPRULI,2019-03,+,-,-,Reinvestor
+ICICIPRULI,2020-03,+,-,-,Reinvestor
 ICICIPRULI,2021-03,+,-,+,Mixed
-ICICIPRULI,2022-03,+,-,-,Shareholder Returns
-ICICIPRULI,2023-03,+,-,-,Shareholder Returns
+ICICIPRULI,2022-03,+,-,-,Reinvestor
+ICICIPRULI,2023-03,+,-,-,Reinvestor
 ICICIPRULI,2024-03,-,+,-,Distress Signal
 INDIGO,2013-03,+,-,+,Mixed
 INDIGO,2014-03,+,-,+,Mixed
@@ -554,8 +554,8 @@ INDUSINDBK,2017-03,+,-,-,Reinvestor
 INDUSINDBK,2018-03,-,-,+,Growth Funded by Debt
 INDUSINDBK,2019-03,-,-,+,Growth Funded by Debt
 INDUSINDBK,2020-03,-,+,+,Distress Signal
-INDUSINDBK,2021-03,+,-,-,Shareholder Returns
-INDUSINDBK,2022-03,+,-,-,Shareholder Returns
+INDUSINDBK,2021-03,+,-,-,Reinvestor
+INDUSINDBK,2022-03,+,-,-,Reinvestor
 INDUSINDBK,2023-03,-,-,+,Growth Funded by Debt
 INDUSINDBK,2024-03,-,-,-,Pre-Revenue
 INFY,2013-03,+,-,-,Reinvestor
@@ -658,8 +658,8 @@ KOTAKBANK,2016-03,+,-,+,Mixed
 KOTAKBANK,2017-03,+,-,+,Mixed
 KOTAKBANK,2018-03,-,-,+,Growth Funded by Debt
 KOTAKBANK,2019-03,+,-,+,Mixed
-KOTAKBANK,2020-03,+,-,-,Shareholder Returns
-KOTAKBANK,2021-03,+,-,-,Shareholder Returns
+KOTAKBANK,2020-03,+,-,-,Reinvestor
+KOTAKBANK,2021-03,+,-,-,Reinvestor
 KOTAKBANK,2022-03,+,-,+,Mixed
 KOTAKBANK,2023-03,-,-,+,Growth Funded by Debt
 KOTAKBANK,2024-03,+,-,+,Mixed
@@ -667,8 +667,8 @@ LICI,2019-03,+,+,-,Liquidating Assets
 LICI,2020-03,+,-,-,Reinvestor
 LICI,2021-03,+,+,-,Liquidating Assets
 LICI,2022-03,-,+,+,Distress Signal
-LICI,2023-03,+,-,-,Shareholder Returns
-LICI,2024-03,+,-,-,Shareholder Returns
+LICI,2023-03,+,-,-,Reinvestor
+LICI,2024-03,+,-,-,Reinvestor
 LODHA,2016-03,+,-,+,Mixed
 LODHA,2017-03,+,-,-,Reinvestor
 LODHA,2018-03,+,-,+,Mixed
@@ -874,14 +874,14 @@ SBILIFE,2013-03,+,-,-,Reinvestor
 SBILIFE,2014-03,+,-,-,Reinvestor
 SBILIFE,2015-03,+,-,-,Reinvestor
 SBILIFE,2016-03,+,-,-,Reinvestor
-SBILIFE,2017-03,+,-,-,Shareholder Returns
-SBILIFE,2018-03,+,-,-,Shareholder Returns
-SBILIFE,2019-03,+,-,-,Shareholder Returns
-SBILIFE,2020-03,+,-,-,Shareholder Returns
+SBILIFE,2017-03,+,-,-,Reinvestor
+SBILIFE,2018-03,+,-,-,Reinvestor
+SBILIFE,2019-03,+,-,-,Reinvestor
+SBILIFE,2020-03,+,-,-,Reinvestor
 SBILIFE,2021-03,+,-,+,Mixed
-SBILIFE,2022-03,+,-,-,Shareholder Returns
-SBILIFE,2023-03,+,-,-,Shareholder Returns
-SBILIFE,2024-03,+,-,-,Shareholder Returns
+SBILIFE,2022-03,+,-,-,Reinvestor
+SBILIFE,2023-03,+,-,-,Reinvestor
+SBILIFE,2024-03,+,-,-,Reinvestor
 SBIN,2013-03,+,-,-,Reinvestor
 SBIN,2014-03,+,-,+,Mixed
 SBIN,2015-03,+,-,-,Reinvestor
@@ -891,9 +891,9 @@ SBIN,2018-03,-,+,+,Distress Signal
 SBIN,2019-03,+,+,+,Cash Accumulator
 SBIN,2020-03,+,-,+,Mixed
 SBIN,2021-03,+,-,+,Mixed
-SBIN,2022-03,+,-,-,Shareholder Returns
+SBIN,2022-03,+,-,-,Reinvestor
 SBIN,2023-03,-,-,+,Growth Funded by Debt
-SBIN,2024-03,+,-,-,Shareholder Returns
+SBIN,2024-03,+,-,-,Reinvestor
 SHREECEM,2013-06,+,-,-,Reinvestor
 SHREECEM,2014-06,+,-,-,Reinvestor
 SHREECEM,2015-06,+,-,-,Reinvestor
