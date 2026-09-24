@@ -243,3 +243,30 @@ def test_cagr_dataframe_pipeline_column_structure() -> None:
     assert latest["pat_cagr_3yr"] == pytest.approx(15.0, abs=0.01)
     assert latest["eps_cagr_3yr"] == pytest.approx(12.0, abs=0.01)
     assert latest["revenue_cagr_10yr"] == pytest.approx(10.0, abs=0.01)
+
+
+def test_cagr_year_gap_handling_ambujacem_regression() -> None:
+    """Verify gap in AMBUJACEM's sequence returns INSUFFICIENT instead of misaligned row-offset calculation."""
+    if not DB_PATH.exists():
+        pytest.skip("Database db/nifty100.db not present")
+
+    df_ambuja = get_pl_cagr_data(company_id="AMBUJACEM", db_path=DB_PATH)
+    assert not df_ambuja.empty
+
+    cagr_df = calculate_cagr_metrics(df_ambuja)
+
+    # 1. Row 2021-12 had 2018-12 (exact 3 years prior) -> computes normally (~3.61%)
+    row_2021 = cagr_df[cagr_df["year"] == "2021-12"].iloc[0]
+    assert not pd.isna(row_2021["revenue_cagr_3yr"])
+    assert row_2021["revenue_cagr_3yr"] == pytest.approx(3.6109, abs=0.01)
+    assert pd.isna(row_2021["revenue_cagr_3yr_flag"])
+
+    # 2. Row 2023-03: candidate 2020-03 does not exist (2022 skipped) -> INSUFFICIENT (not misaligned against 2019-12)
+    row_2023 = cagr_df[cagr_df["year"] == "2023-03"].iloc[0]
+    assert pd.isna(row_2023["revenue_cagr_3yr"])
+    assert row_2023["revenue_cagr_3yr_flag"] == "INSUFFICIENT"
+
+    # 3. Row 2024-03: candidate 2021-03 does not exist -> INSUFFICIENT
+    row_2024 = cagr_df[cagr_df["year"] == "2024-03"].iloc[0]
+    assert pd.isna(row_2024["revenue_cagr_3yr"])
+    assert row_2024["revenue_cagr_3yr_flag"] == "INSUFFICIENT"

@@ -2,7 +2,9 @@
 
 Implements:
 - Standard CAGR formula: ((end_value / start_value) ** (1 / n) - 1) * 100
-- 3-year, 5-year, and 10-year rolling windows across chronological fiscal years
+- 3-year, 5-year, and 10-year rolling windows with exact year-gap matching
+- Gap-aware windowing: matches base row with exact (year - w, same month),
+  returning 'INSUFFICIENT' if a sequence gap exists instead of misaligning rows.
 - 6 edge cases per project spec Section 23.1:
   * Positive base, Positive end -> Computed normally (flag: None)
   * Positive base, Negative end -> None, flag = 'DECLINE_TO_LOSS'
@@ -102,7 +104,7 @@ def calculate_cagr_metrics(
     df: pd.DataFrame,
     windows: tuple[int, ...] = (3, 5, 10),
 ) -> pd.DataFrame:
-    """Compute 3yr, 5yr, and 10yr CAGR and edge-case flags for revenue, PAT, and EPS."""
+    """Compute 3yr, 5yr, and 10yr CAGR and edge-case flags using exact year-gap matching."""
     if df.empty:
         return pd.DataFrame()
 
@@ -110,8 +112,12 @@ def calculate_cagr_metrics(
 
     for _, group in df.groupby("company_id", sort=False):
         g = group.sort_values("year").reset_index(drop=True)
-        n_rows = len(g)
         g_res = g.copy()
+
+        # Map each year string to its row Series for exact target lookups
+        year_row_map: dict[str, pd.Series] = {
+            str(row["year"]): row for _, row in g.iterrows()
+        }
 
         for w in windows:
             rev_cagr: list[float | None] = []
@@ -121,17 +127,17 @@ def calculate_cagr_metrics(
             eps_cagr: list[float | None] = []
             eps_flag: list[str | None] = []
 
-            for i in range(n_rows):
-                if i - w < 0:
-                    rev_cagr.append(None)
-                    rev_flag.append("INSUFFICIENT")
-                    pat_cagr.append(None)
-                    pat_flag.append("INSUFFICIENT")
-                    eps_cagr.append(None)
-                    eps_flag.append("INSUFFICIENT")
-                else:
-                    base_row = g.iloc[i - w]
-                    curr_row = g.iloc[i]
+            for _, curr_row in g.iterrows():
+                curr_year_str = str(curr_row["year"])
+                try:
+                    curr_y = int(curr_year_str[:4])
+                    curr_m = curr_year_str[5:7]
+                    target_year_str = f"{curr_y - w:04d}-{curr_m}"
+                except (ValueError, IndexError):
+                    target_year_str = ""
+
+                if target_year_str in year_row_map:
+                    base_row = year_row_map[target_year_str]
 
                     # Revenue (sales)
                     rc, rf = calculate_cagr(base_row["sales"], curr_row["sales"], w)
@@ -149,6 +155,14 @@ def calculate_cagr_metrics(
                     ec, ef = calculate_cagr(base_row["eps"], curr_row["eps"], w)
                     eps_cagr.append(ec)
                     eps_flag.append(ef)
+                else:
+                    # Gap in sequence or insufficient history for exact w-year window
+                    rev_cagr.append(None)
+                    rev_flag.append("INSUFFICIENT")
+                    pat_cagr.append(None)
+                    pat_flag.append("INSUFFICIENT")
+                    eps_cagr.append(None)
+                    eps_flag.append("INSUFFICIENT")
 
             g_res[f"revenue_cagr_{w}yr"] = rev_cagr
             g_res[f"revenue_cagr_{w}yr_flag"] = rev_flag
