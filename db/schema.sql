@@ -150,3 +150,59 @@ CREATE INDEX IF NOT EXISTS idx_docs_company_year ON documents(company_id, year);
 CREATE INDEX IF NOT EXISTS idx_prices_company_date ON stock_prices(company_id, date);
 CREATE INDEX IF NOT EXISTS idx_mcap_company_year ON market_cap(company_id, year);
 CREATE INDEX IF NOT EXISTS idx_sectors_broad ON sectors(broad_sector);
+
+-- 11. financial_ratios (Comprehensive Financial & Valuation Ratios Engine)
+CREATE TABLE IF NOT EXISTS financial_ratios (
+    company_id VARCHAR(20) NOT NULL,
+    year VARCHAR(10) NOT NULL,
+    net_profit_margin_pct NUMERIC,
+    operating_profit_margin_pct NUMERIC,
+    return_on_equity_pct NUMERIC,
+    return_on_capital_employed_pct NUMERIC,
+    return_on_assets_pct NUMERIC,
+    debt_to_equity NUMERIC,
+    high_leverage_flag INTEGER,
+    interest_coverage NUMERIC,
+    icr_label VARCHAR(50),
+    icr_risk_flag INTEGER,
+    net_debt_cr NUMERIC,
+    asset_turnover NUMERIC,
+    revenue_cagr_3yr NUMERIC,
+    revenue_cagr_3yr_flag VARCHAR(50),
+    revenue_cagr_5yr NUMERIC,
+    revenue_cagr_5yr_flag VARCHAR(50),
+    revenue_cagr_10yr NUMERIC,
+    revenue_cagr_10yr_flag VARCHAR(50),
+    pat_cagr_3yr NUMERIC,
+    pat_cagr_3yr_flag VARCHAR(50),
+    pat_cagr_5yr NUMERIC,
+    pat_cagr_5yr_flag VARCHAR(50),
+    pat_cagr_10yr NUMERIC,
+    pat_cagr_10yr_flag VARCHAR(50),
+    eps_cagr_3yr NUMERIC,
+    eps_cagr_3yr_flag VARCHAR(50),
+    eps_cagr_5yr NUMERIC,
+    eps_cagr_5yr_flag VARCHAR(50),
+    eps_cagr_10yr NUMERIC,
+    eps_cagr_10yr_flag VARCHAR(50),
+    free_cash_flow_cr NUMERIC,
+    cfo_quality_score NUMERIC,
+    cfo_quality_label VARCHAR(50),
+    capex_intensity_pct NUMERIC,
+    capex_label VARCHAR(50),
+    fcf_conversion_rate_pct NUMERIC,
+    fcf_conversion_label VARCHAR(50),
+    capital_allocation_pattern VARCHAR(50),
+    earnings_per_share NUMERIC,
+    book_value_per_share NUMERIC,
+    dividend_payout_ratio_pct NUMERIC,
+    total_debt_cr NUMERIC,
+    cash_from_operations_cr NUMERIC,
+    composite_quality_score NUMERIC,
+    sector_relative_flag INTEGER,
+    PRIMARY KEY (company_id, year),
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+CREATE INDEX IF NOT EXISTS idx_fr_company_year ON financial_ratios(company_id, year);
+CREATE INDEX IF NOT EXISTS idx_fr_quality_score ON financial_ratios(composite_quality_score);
