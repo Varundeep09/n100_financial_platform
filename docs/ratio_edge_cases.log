@@ -109,3 +109,31 @@ B. INTENTIONAL SIGN PATTERN EXTENSION FOR CAPITAL ALLOCATION:
      * CFF < 0: debt repayment or negative financing flows
    - In accordance with empirical accounting literature (Dickinson\'s lifecycle distress phase), (-, +, -) is
      deliberately mapped to 'Distress Signal' alongside (-, +, +) rather than failing or remaining unclassified.
+
+====================================================================================================
+5. RATIO AUDIT & OUTLIER INVESTIGATIONS (DAY 12)
+====================================================================================================
+A. IRFC 10-YEAR EPS CAGR DIVERGENCE (-31.15% EPS CAGR vs +24.78% PAT CAGR):
+   - Observation: In FY24, IRFC exhibits pat_cagr_10yr = +24.7750% while eps_cagr_10yr = -31.1534%.
+   - Forensic Evidence & Cause:
+     * In FY14 (10yr base), IRFC Net Profit was Rs 701 Cr and reported EPS was Rs 209.0.
+       Balance sheet equity capital was Rs 3,352 Cr, representing ~3.35 Cr shares at Rs 1,000 face value.
+     * Between FY17 and FY18, IRFC restructured its capital base with a 100-for-1 stock split / face value
+       reduction from Rs 1,000 to Rs 10 (reported EPS dropped from Rs 143 in FY17 to Rs 3 in FY18).
+     * Subsequent sovereign equity infusions and the January 2021 IPO expanded total share count to
+       1,306.9 Cr shares at Rs 10 face value in FY24 (Net Profit Rs 6,412 Cr, EPS Rs 5.0).
+     * Because Screener's raw historical financial records reflect unadjusted standalone EPS as originally
+       reported rather than retroactively split-adjusted figures:
+         Raw 10yr EPS CAGR = (5 / 209)^(1/10) - 1 = -31.1534%
+         Split-Adjusted 10yr EPS CAGR (base EPS Rs 2.09) = (5 / 2.09)^(1/10) - 1 = +9.11%
+     * Conclusion: The negative CAGR is mathematically authentic to the raw source data and reflects a 390x
+       structural share count dilution / pre-IPO restructuring, not a calculation engine defect.
+
+B. INFOSYS (INFY) FY24 DIVIDEND PAYOUT RATIO (None):
+   - Observation: INFY dividend_payout_ratio_pct is None for 2024-03 despite consistent dividend history.
+   - Forensic Evidence & Cause:
+     * Audited data/raw/profitandloss.xlsx (row 622). The source cell 'dividend_payout' for INFY Mar 2024
+       is literally blank/NaN in the Screener data dump (as is TTM).
+     * All prior 11 years (FY13 through FY23) are fully populated (ranging 25% to 73%).
+     * The loader and ratio population engine correctly passed through None without falsifying or interpolating
+       unreported source data.
