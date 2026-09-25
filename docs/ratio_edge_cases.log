@@ -2,7 +2,7 @@
 # Date: 2026-09-22 | Status: Production Design Decision Log (Evidence-Based Policy)
 
 ====================================================================================================
-1. BACKGROUND & DISCOVERY
+1. BACKGROUND & DISCOVERY (DAY 8 - SEP 22, 2026)
 ====================================================================================================
 During Sprint 2 Day 8 verification, an extreme OPM anomaly was discovered for AXISBANK (-10,277% to +13,857%).
 A full forensic audit across all 92 companies and 1,073 P&L rows revealed two distinct source data export phenomena
@@ -44,7 +44,7 @@ D. STANDARD NON-FINANCIALS (63 Companies: TCS, RELIANCE, INFOSYS, MARUTI, TITAN,
    - 100% clean adherence to standard accounting: `sales - expenses == operating_profit`.
 
 ====================================================================================================
-2. ALL 23 FINANCIALS SECTOR CONSTITUENTS — EVIDENCE-BASED POLICY MATRIX
+2. ALL 23 FINANCIALS SECTOR CONSTITUENTS (DAYS 8-9 - SEP 22-23, 2026) — EVIDENCE-BASED POLICY MATRIX
 ====================================================================================================
 
 Company ID  | Sub-Sector             | P&L Identity (sales - exp == op) | Policy & Ratio Treatment
@@ -75,7 +75,7 @@ LICI        | Life Insurance         | HOLDS (845,966 - 813,188 = 32,778| COMPUT
 SBILIFE     | Life Insurance         | HOLDS (131,988 - 131,742 = 246)  | COMPUTE: OPM=0.19%, ROCE=1.14%, sector_relative=True
 
 ====================================================================================================
-3. EXTREME MAGNITUDE SANITY FLAGGING (INDIGO & SIMILAR OUTLIERS)
+3. EXTREME MAGNITUDE SANITY FLAGGING (INDIGO & SIMILAR OUTLIERS) (DAYS 8-9 - SEP 22-23, 2026)
 ====================================================================================================
 Outlier ratios resulting from thin or near-zero equity/asset denominators (such as INDIGO's post-COVID
 turnaround on a depleted ₹915 Cr equity base yielding ROE = 892.57%) are marked with `extreme_magnitude_flag = True`
@@ -86,7 +86,7 @@ whenever:
 This preserves pure mathematical integrity while alerting downstream analytics and dashboard screeners.
 
 ====================================================================================================
-4. CASH FLOW KPIS & CAPITAL ALLOCATION CLASSIFIER (DAY 11)
+4. CASH FLOW KPIS & CAPITAL ALLOCATION CLASSIFIER (DAY 11 - SEP 24, 2026)
 ====================================================================================================
 A. FINANCIALS SECTOR & LENDING NBFC CARVE-OUT FROM CFO QUALITY SCORE:
    - For industrial and commercial firms, a trailing CFO / PAT ratio < 0.5 signals aggressive revenue
@@ -111,7 +111,7 @@ B. INTENTIONAL SIGN PATTERN EXTENSION FOR CAPITAL ALLOCATION:
      deliberately mapped to 'Distress Signal' alongside (-, +, +) rather than failing or remaining unclassified.
 
 ====================================================================================================
-5. RATIO AUDIT & OUTLIER INVESTIGATIONS (DAY 12)
+5. RATIO AUDIT & OUTLIER INVESTIGATIONS (DAY 12 - SEP 25, 2026)
 ====================================================================================================
 A. IRFC 10-YEAR EPS CAGR DIVERGENCE (-31.15% EPS CAGR vs +24.78% PAT CAGR):
    - Observation: In FY24, IRFC exhibits pat_cagr_10yr = +24.7750% while eps_cagr_10yr = -31.1534%.
@@ -137,3 +137,104 @@ B. INFOSYS (INFY) FY24 DIVIDEND PAYOUT RATIO (None):
      * All prior 11 years (FY13 through FY23) are fully populated (ranging 25% to 73%).
      * The loader and ratio population engine correctly passed through None without falsifying or interpolating
        unreported source data.
+
+====================================================================================================
+6. SOURCE CROSS-VALIDATION & ANOMALY AUDIT (DAY 13 - SEP 25, 2026)
+====================================================================================================
+SCOPE & UNIVERSE DEFINITION:
+- Total Master Companies: 92
+- Banking-Template Companies: 16 (OPM, ROCE, ICR, FCF Conversion intentionally None by design)
+- Non-Banking Applicable Companies for ROCE Cross-Check: 76 companies
+- All Applicable Companies for ROE Cross-Check: 91 companies (SBIN excluded due to raw balance sheet source gap)
+
+----------------------------------------------------------------------------------------------------
+A. ROCE CROSS-CHECK (return_on_capital_employed_pct vs companies.roce_percentage):
+- Target: 76 non-banking-template companies.
+- Anomaly Threshold: |Difference| > 5.0%
+- Findings: 24 out of 76 companies exhibit |difference| > 5.0% (52 companies match within 5%).
+
+Detailed ROCE Anomaly Audit (24 Companies):
+| Company | Computed ROCE | Source ROCE | Difference | Category | Forensic Rationale |
+| :--- | :---: | :---: | :---: | :--- | :--- |
+| BEL        |     3628.35% |     34.60% |  +3593.75% | Data source issue         | Raw balance sheet scale-down in source (~100x lower than P&L figures) |
+| HAL        |     2590.99% |     38.90% |  +2552.09% | Data source issue         | Raw balance sheet scale-down in source (~100x lower than P&L figures) |
+| INDIGO     |     1064.91% |     24.50% |  +1040.41% | Data source issue         | Post-COVID thin equity base produces extreme ROCE (1065%); source uses stale/different CE |
+| LT         |      118.53% |     17.18% |   +101.35% | Data source issue         | Raw source mismatch: consolidated P&L vs standalone/partial balance sheet reserves |
+| ADANIGREEN |        7.25% |     96.50% |    -89.25% | Version/timing difference | Timing/period mismatch: source reflects exceptional/interim spike vs FY24 full year |
+| NESTLEIND  |      143.15% |    185.43% |    -42.28% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| LICI       |       39.05% |     63.79% |    -24.74% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| COALINDIA  |       46.20% |     63.60% |    -17.40% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| M&M        |       11.54% |     26.98% |    -15.44% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| ADANIPOWER |       18.39% |     32.20% |    -13.81% | Version/timing difference | Timing/period mismatch: source reflects exceptional/interim spike vs FY24 full year |
+| SBILIFE    |        1.14% |     13.20% |    -12.06% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| IRCTC      |       42.83% |     53.80% |    -10.97% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| EICHERMOT  |       20.21% |     31.10% |    -10.89% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| BAJAJHLDNG |        2.81% |     13.10% |    -10.29% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| ASIANPAINT |       31.75% |     41.75% |    -10.00% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| BAJAJFINSV |       11.45% |     21.14% |     -9.69% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| ABB        |       36.54% |     46.00% |     -9.46% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| GODREJCP   |       17.17% |     26.49% |     -9.32% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| LTIM       |       25.21% |     34.10% |     -8.89% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| MARUTI     |       15.59% |     23.67% |     -8.08% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| INFY       |       32.91% |     40.00% |     -7.09% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| BOSCHLTD   |       13.76% |     20.60% |     -6.84% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| BAJAJ-AUTO |       27.21% |     33.50% |     -6.29% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+| DRREDDY    |       21.36% |     26.50% |     -5.14% | Formula discrepancy       | Formula difference: Screener PBIT/invested capital vs our strict (OP-Depr)/(Equity+Debt) |
+
+ROCE Anomaly Breakdown (24 Total out of 76 Applicable):
+- Data source issue: 4 (BEL, HAL, INDIGO, LT)
+- Version/timing difference: 2 (ADANIGREEN, ADANIPOWER)
+- Formula discrepancy: 18 (NESTLEIND, LICI, COALINDIA, M&M, SBILIFE, IRCTC, EICHERMOT, BAJAJHLDNG, ASIANPAINT, BAJAJFINSV, ABB, GODREJCP, LTIM, MARUTI, INFY, BOSCHLTD, BAJAJ-AUTO, DRREDDY)
+
+----------------------------------------------------------------------------------------------------
+B. ROE CROSS-CHECK (return_on_equity_pct vs companies.roe_percentage) & EXTREME DIVERGENCES (>10x):
+- Target: 91 companies with computed FY24 ROE.
+- Confirmation of TCS Anomaly:
+  * Computed ROE: 50.9443% (Net Profit Rs 46,099 Cr / Net Worth Rs 90,489 Cr)
+  * Source companies.roe_percentage: 0.52% (Divergence: 98.0x multiplier, diff +50.42%)
+  * Verdict: CONFIRMED. Source column exhibits an overt 100x decimal/units error (0.52% instead of ~52%).
+- Additional Extreme Divergences (>10x Multiplier):
+  * BEL: Computed ROE 4744.05% vs Source 26.30% (Multiplier: 180.4x)
+    Cause: Raw source balance sheet equity+reserves is Rs 84 Cr vs P&L Net Profit Rs 3,985 Cr.
+  * HAL: Computed ROE 3816.58% vs Source 28.90% (Multiplier: 132.1x)
+    Cause: Raw source balance sheet equity+reserves is Rs 199 Cr vs P&L Net Profit Rs 7,595 Cr.
+- Total Extreme Anomalies (>10x Multiplier): Exactly 3 companies (BEL, HAL, TCS).
+
+Detailed ROE Anomaly Audit (18 Companies with |diff| > 5% or >10x):
+| Company | Computed ROE | Source ROE | Difference | Multiplier | Category | Forensic Rationale |
+| :--- | :---: | :---: | :---: | :---: | :--- | :--- |
+| BEL        |    4744.05% |    26.30% | +4717.75% |  180.4x | Data source issue         | Raw balance sheet scale-down in source (~100x compressed reserves) |
+| HAL        |    3816.58% |    28.90% | +3787.68% |  132.1x | Data source issue         | Raw balance sheet scale-down in source (~100x compressed reserves) |
+| LT         |      77.67% |    10.49% |   +67.18% |    7.4x | Data source issue         | Consolidated P&L vs standalone/compressed balance sheet reserves in source |
+| PNB        |      61.32% |     8.70% |   +52.62% |    7.0x | Data source issue         | Consolidated P&L vs standalone/compressed balance sheet reserves in source |
+| TCS        |      50.94% |     0.52% |   +50.42% |   98.0x | Data source issue         | Source 100x decimal error (0.52% vs real 50.94% on Rs 46k Cr PAT) |
+| NESTLEIND  |     117.75% |   135.61% |   -17.86% |    1.2x | Formula discrepancy       | Formula difference: average net worth / pre-tax vs year-end net worth |
+| LICI       |      49.45% |    63.61% |   -14.16% |    1.3x | Formula discrepancy       | Formula difference: average net worth / pre-tax vs year-end net worth |
+| BAJAJFINSV |      25.85% |    11.72% |   +14.13% |    2.2x | Formula discrepancy       | Formula difference: average net worth / pre-tax vs year-end net worth |
+| TATAMOTORS |      37.46% |    49.40% |   -11.94% |    1.3x | Version/timing difference | Rapid earnings turnaround / expansion timing between FY23 and FY24 |
+| TATASTEEL  |      -5.33% |     6.55% |   -11.88% |   -0.8x | Version/timing difference | Negative FY24 PAT (-5.3% / -4.5%) vs stale prior-period positive source ROE |
+| GODREJCP   |      -4.45% |     6.77% |   -11.22% |   -0.7x | Version/timing difference | Negative FY24 PAT (-5.3% / -4.5%) vs stale prior-period positive source ROE |
+| TRENT      |      36.31% |    27.20% |    +9.11% |    1.3x | Version/timing difference | Rapid earnings turnaround / expansion timing between FY23 and FY24 |
+| ADANIPOWER |      48.28% |    57.10% |    -8.82% |    1.2x | Version/timing difference | Rapid earnings turnaround / expansion timing between FY23 and FY24 |
+| COALINDIA  |      45.17% |    52.00% |    -6.83% |    1.2x | Formula discrepancy       | Formula difference: average net worth / pre-tax vs year-end net worth |
+| PFC        |      26.16% |    19.49% |    +6.67% |    1.3x | Formula discrepancy       | Formula difference: average net worth / pre-tax vs year-end net worth |
+| BPCL       |      35.51% |    41.90% |    -6.39% |    1.2x | Formula discrepancy       | Formula difference: average net worth / pre-tax vs year-end net worth |
+| IRCTC      |      34.40% |    40.40% |    -6.00% |    1.2x | Formula discrepancy       | Formula difference: average net worth / pre-tax vs year-end net worth |
+| ADANIENT   |       8.53% |    13.64% |    -5.11% |    1.6x | Formula discrepancy       | Formula difference: average net worth / pre-tax vs year-end net worth |
+
+ROE Anomaly Breakdown (18 Total):
+- Data source issue: 5 (BEL, HAL, LT, PNB, TCS)
+- Version/timing difference: 5 (TATASTEEL, GODREJCP, TATAMOTORS, ADANIPOWER, TRENT)
+- Formula discrepancy: 8 (NESTLEIND, LICI, BAJAJFINSV, COALINDIA, PFC, BPCL, IRCTC, ADANIENT)
+
+----------------------------------------------------------------------------------------------------
+C. FULL AUDIT SYNTHESIS & ARCHITECTURAL DECISION:
+- Combined Unique Companies Logged Across ROCE & ROE: 32 companies
+  * Data source issues: 6 companies (BEL, HAL, INDIGO, LT, PNB, TCS)
+  * Version/timing differences: 6 companies (ADANIGREEN, ADANIPOWER, GODREJCP, TATAMOTORS, TATASTEEL, TRENT)
+  * Formula discrepancies: 20 companies (ABB, ADANIENT, ASIANPAINT, BAJAJ-AUTO, BAJAJFINSV, BAJAJHLDNG, BOSCHLTD, BPCL, COALINDIA, DRREDDY, EICHERMOT, INFY, IRCTC, LICI, LTIM, M&M, MARUTI, NESTLEIND, PFC, SBILIFE)
+- ARCHITECTURAL POLICY:
+  All downstream analytics, screening filters, scoring engines, and dashboard cards MUST consume
+  the computed values from `financial_ratios` table. The pre-computed columns in `companies.xlsx`
+  (roce_percentage, roe_percentage) are strictly treated as auxiliary source metadata for cross-audit
+  and display reference only, never as canonical inputs.
