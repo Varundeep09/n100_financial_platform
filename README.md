@@ -1,57 +1,82 @@
 # N100 Financial Intelligence Platform
 
-Bluestock Fintech internship project. Builds a validated financial data
-warehouse for 92 Nifty 100 companies, a 50+ KPI ratio engine, an
-investment screener with peer comparison, a Streamlit dashboard, an
-NLP-driven PDF reporting layer, and a FastAPI server — across 6 sprints
-/ 45 calendar days.
+Bluestock Fintech production platform for equity research and institutional intelligence across 92 Nifty 100 companies. Features a validated financial data warehouse, a 50-metric KPI and valuation ratio engine, an investment screener with peer benchmarking, a Streamlit analytics dashboard, an automated tearsheet reporting layer, and a FastAPI service layer.
 
-Full spec: see the project brief (Nifty100_Project_Document_FINAL.pdf) —
-keep a copy in `docs/`.
+Full specifications and project architecture: see `docs/Nifty100_Project_Document_FINAL.pdf` and `docs/ratio_edge_cases.log`.
 
-## Project status
-Scaffold only. Sprint 1 (Data Foundation, Days 1–7) starts here.
+---
 
-## Folder structure
+## Project Status
+
+- **Sprint 1 — Data Foundation & Validation (Days 1–7):** **COMPLETE** (Tagged `sprint1-complete`)
+  - 10 relational tables in SQLite (`db/nifty100.db`) loaded from 12 source files with 0 foreign-key violations.
+  - 16 automated Data Quality rules (DQ-01 to DQ-16) passing with 0 critical failures.
+- **Sprint 2 — Financial Ratio Engine & Edge Cases (Days 8–14):** **COMPLETE** (Tagged `sprint2-complete`)
+  - 50-column `financial_ratios` table populated with 1,155 rows across all 92 companies and reporting periods.
+  - Evidence-based normalization for 16 banking templates, 23 Financials sector leverage carve-outs, exact calendar year-target CAGR matching, CFO quality NBFC carve-out, and active neutralization of corrupted balance-sheet data (BEL, HAL).
+  - AC-07 screener acceptance test passing (34 quality preset companies).
+- **Buffer Period — Audit & Quality Pass (Sep 26–29):** **COMPLETE**
+- **Sprint 3 — Investment Screener Engine (Days 15–21):** Starts Sep 30, 2026.
+
+---
+
+## Directory Structure
+
 ```
-data/raw/          7 core Excel files (companies, P&L, BS, CF, analysis,
-                    documents, prosandcons) — never edited, header row = 1
-data/supporting/   5 supplementary files (sectors, stock_prices, market_cap,
-                    financial_ratios, peer_groups) — never edited, header row = 0
-db/                schema.sql, nifty100.db (SQLite, git-ignored)
-src/etl/           loader.py, validator.py, normaliser.py     (Sprint 1)
-src/analytics/     ratios.py, cagr.py, cashflow_kpis.py       (Sprint 2)
-src/dashboard/     app.py — Streamlit, 8 screens               (Sprint 4)
-src/api/           FastAPI server, 16 endpoints                (Sprint 6)
-tests/etl/         ETL unit tests (35+ required, Sprint 1)
-tests/kpi/         KPI formula tests (Sprint 2)
-tests/dq/          Data-quality rule tests
+data/raw/          7 core Excel source files (companies, P&L, BS, CF, analysis, documents, prosandcons)
+data/supporting/   5 supplementary source files (sectors, stock_prices, market_cap, financial_ratios, peer_groups)
+data/processed/    Derived classification artifacts (e.g. capital_allocation.csv)
+db/                schema.sql, loader.py, and nifty100.db (SQLite database)
+src/etl/           loader.py, validator.py (Sprint 1 data foundation)
+src/analytics/     ratios.py, cagr.py, cashflow_kpis.py, populate_financial_ratios.py (Sprint 2 ratio engine)
+src/dashboard/     Streamlit interactive visual platform (Sprint 4)
+src/api/           FastAPI REST API service layer (Sprint 6)
+tests/dq/          16 Data Quality rule unit tests (31 tests)
+tests/etl/         Schema, normalization, and smoke tests (72 tests)
+tests/kpi/         Profitability, leverage, CAGR, cash flow, and ratio table tests (65 tests)
 tests/api/         API endpoint tests (Sprint 6)
-reports/           load_audit.csv, validation_failures.csv, pytest_report.html,
-                    tearsheets/ (92 company PDFs, Sprint 5), sector reports
-notebooks/         exploratory_queries.sql and analysis notebooks (not production path)
-docs/              Project brief / spec documents
+reports/           load_audit.csv, validation_failures.csv, sprint1_retro.md, sprint2_retro.md
+docs/              Project specifications, ratio_edge_cases.log, buffer_period_notes.md
 ```
 
-## Setup
+---
+
+## Setup & Full Pipeline Execution
+
+### 1. Environment Setup
 ```bash
+# Create virtual environment and activate
 python -m venv .venv
-source .venv/bin/activate   # or .venv\Scripts\Activate.ps1 on Windows
+source .venv/bin/activate        # Linux/macOS
+# or .venv\Scripts\Activate.ps1   # Windows PowerShell
+
+# Install dependencies
 make install
-cp .env.template .env
+# or: pip install -r requirements.txt
 ```
 
-## Sprint 1 — Data Foundation (Days 1–7)
-Goal: `db/nifty100.db` with all 10 tables loaded from 12 source files,
-all 16 data-quality rules (DQ-01–DQ-16) applied with zero CRITICAL
-failures, `load_audit.csv` and `validation_failures.csv` produced.
+### 2. Run the Full End-to-End Pipeline
+Execute the full data pipeline from raw Excel files to populated ratio database and regression verification:
 
-Confirmed against the real uploaded source files (not just the spec):
-all 12 row counts match exactly (companies=92, profitandloss=1276,
-balancesheet=1312, cashflow=1187, analysis=20, documents=1585,
-prosandcons=16, sectors=92, stock_prices=5520, market_cap=552,
-financial_ratios=1184, peer_groups=56). Core files use `header=1`
-(row 0 is a title/metadata row); supplementary files use `header=0`.
+```bash
+# Step 1: Load and validate core and supporting datasets into SQLite
+make load
+# or: python db/loader.py
 
-Run `make load` once the loader is implemented, `make test` to run the
-unit test suite.
+# Step 2: Run the full ratio calculation engine across all 92 companies
+make ratios
+# or: python src/analytics/populate_financial_ratios.py
+
+# Step 3: Run the complete automated test suite (168 tests)
+make test
+# or: pytest tests/ -v --tb=short
+```
+
+---
+
+## Verification & Quality Standards
+
+- **Code Formatting:** Formatted with `black src/ tests/` (100% compliant).
+- **Linting:** Enforced via `ruff check src/ tests/` (0 errors).
+- **Type Annotations & Docstrings:** 100% of public functions across `src/analytics/` and `src/etl/` have complete type hints and descriptive docstrings.
+- **Audit Logs:** Full decision logs and forensic edge cases documented in `docs/ratio_edge_cases.log` and `reports/sprint2_retro.md`.

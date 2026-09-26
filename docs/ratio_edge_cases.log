@@ -1,5 +1,17 @@
-# N100 Financial Platform — Ratio Engine Edge Cases & Schema Alignment Log
-# Date: 2026-09-22 | Status: Production Design Decision Log (Evidence-Based Policy)
+# N100 Financial Platform - Ratio Engine Edge Cases & Schema Alignment Log
+# Date: 2026-09-26 | Status: Production Audit Trail (Days 8 - 14 Complete)
+
+====================================================================================================
+TABLE OF CONTENTS
+====================================================================================================
+1. Sprint 2 Day 8  - Column Mapping & Banking P&L Discovery
+2. Sprint 2 Day 9  - Leverage Exemption Decoupling & 23 Financials Policy Matrix
+3. Sprint 2 Day 9  - Extreme Magnitude Sanity Flagging (IndiGo & Denominator Outliers)
+4. Sprint 2 Day 10 - CAGR Windowing & Exact Calendar Year-Target Matching
+5. Sprint 2 Day 11 - Cash Flow KPIs & Capital Allocation Classifier
+6. Sprint 2 Day 12 - Ratio Audit & Outlier Investigations (IRFC EPS Dilution, INFY Dividend)
+7. Sprint 2 Day 13 - Source Benchmark Reconciliation & BEL/HAL Scale Error Remediation
+8. Sprint 2 Day 14 - Acceptance Testing (AC-07) & Canonical Authority Rules
 
 ====================================================================================================
 1. BACKGROUND & DISCOVERY (DAY 8 - SEP 22, 2026)
@@ -44,7 +56,7 @@ D. STANDARD NON-FINANCIALS (63 Companies: TCS, RELIANCE, INFOSYS, MARUTI, TITAN,
    - 100% clean adherence to standard accounting: `sales - expenses == operating_profit`.
 
 ====================================================================================================
-2. ALL 23 FINANCIALS SECTOR CONSTITUENTS (DAYS 8-9 - SEP 22-23, 2026) — EVIDENCE-BASED POLICY MATRIX
+2. SPRINT 2 DAY 9 - ALL 23 FINANCIALS SECTOR CONSTITUENTS (SEP 23, 2026) — EVIDENCE-BASED POLICY MATRIX
 ====================================================================================================
 
 Company ID  | Sub-Sector             | P&L Identity (sales - exp == op) | Policy & Ratio Treatment
@@ -75,7 +87,7 @@ LICI        | Life Insurance         | HOLDS (845,966 - 813,188 = 32,778| COMPUT
 SBILIFE     | Life Insurance         | HOLDS (131,988 - 131,742 = 246)  | COMPUTE: OPM=0.19%, ROCE=1.14%, sector_relative=True
 
 ====================================================================================================
-3. EXTREME MAGNITUDE SANITY FLAGGING (INDIGO & SIMILAR OUTLIERS) (DAYS 8-9 - SEP 22-23, 2026)
+3. SPRINT 2 DAY 9 - EXTREME MAGNITUDE SANITY FLAGGING (INDIGO & OUTLIERS) (SEP 23, 2026)
 ====================================================================================================
 Outlier ratios resulting from thin or near-zero equity/asset denominators (such as INDIGO's post-COVID
 turnaround on a depleted ₹915 Cr equity base yielding ROE = 892.57%) are marked with `extreme_magnitude_flag = True`
@@ -86,7 +98,25 @@ whenever:
 This preserves pure mathematical integrity while alerting downstream analytics and dashboard screeners.
 
 ====================================================================================================
-4. CASH FLOW KPIS & CAPITAL ALLOCATION CLASSIFIER (DAY 11 - SEP 24, 2026)
+4. SPRINT 2 DAY 10 - CAGR WINDOWING & EXACT CALENDAR YEAR-TARGET MATCHING (SEP 24, 2026)
+====================================================================================================
+A. POSITIONAL OFFSET BUG DISCOVERY:
+   - In naive multi-year windowing, calculating 3yr, 5yr, and 10yr CAGRs by shifting rows `i - w`
+     assumes an unbroken chronological sequence of consecutive annual reports.
+   - For companies with reporting calendar changes or data skips (such as AMBUJACEM skipping FY22
+     due to changing fiscal year ends from Dec to Mar, or LODHA's pre-IPO filings), row `i - 3`
+     landed on a period 3.25 to 4.25 calendar years prior, distorting reported growth rates.
+
+B. EXACT YEAR-GAP TARGETING RULE:
+   - Enforced calendar-exact base year resolution:
+     `target_year = current_year - w`
+   - If a company's historical sequence does not contain a statement matching `target_year`
+     (e.g., AMBUJACEM 2024-03 targeting 2021-03, which skipped 2022), the CAGR calculation
+     strictly returns None with flag = 'INSUFFICIENT'.
+   - Result: Zero stretching or compression of multi-year growth windows across all 92 companies.
+
+====================================================================================================
+5. SPRINT 2 DAY 11 - CASH FLOW KPIS & CAPITAL ALLOCATION CLASSIFIER (DAY 11 - SEP 24, 2026)
 ====================================================================================================
 A. FINANCIALS SECTOR & LENDING NBFC CARVE-OUT FROM CFO QUALITY SCORE:
    - For industrial and commercial firms, a trailing CFO / PAT ratio < 0.5 signals aggressive revenue
@@ -111,7 +141,7 @@ B. INTENTIONAL SIGN PATTERN EXTENSION FOR CAPITAL ALLOCATION:
      deliberately mapped to 'Distress Signal' alongside (-, +, +) rather than failing or remaining unclassified.
 
 ====================================================================================================
-5. RATIO AUDIT & OUTLIER INVESTIGATIONS (DAY 12 - SEP 25, 2026)
+6. SPRINT 2 DAY 12 - RATIO AUDIT & OUTLIER INVESTIGATIONS (SEP 25, 2026)
 ====================================================================================================
 A. IRFC 10-YEAR EPS CAGR DIVERGENCE (-31.15% EPS CAGR vs +24.78% PAT CAGR):
    - Observation: In FY24, IRFC exhibits pat_cagr_10yr = +24.7750% while eps_cagr_10yr = -31.1534%.
@@ -139,7 +169,7 @@ B. INFOSYS (INFY) FY24 DIVIDEND PAYOUT RATIO (None):
        unreported source data.
 
 ====================================================================================================
-6. SOURCE CROSS-VALIDATION & ANOMALY AUDIT (DAY 13 - SEP 25, 2026)
+7. SPRINT 2 DAY 13 - SOURCE BENCHMARK RECONCILIATION & BEL/HAL REMEDIATION (SEP 25-26, 2026)
 ====================================================================================================
 SCOPE & UNIVERSE DEFINITION:
 - Total Master Companies: 92
@@ -285,3 +315,19 @@ C. FULL AUDIT SYNTHESIS & ARCHITECTURAL DECISION:
   the computed values from `financial_ratios` table. The pre-computed columns in `companies.xlsx`
   (roce_percentage, roe_percentage) are strictly treated as auxiliary source metadata for cross-audit
   and display reference only, never as canonical inputs.
+
+====================================================================================================
+8. SPRINT 2 DAY 14 - ACCEPTANCE TESTING (AC-07) & CANONICAL AUTHORITY RULES (SEP 26, 2026)
+====================================================================================================
+A. AC-07 ACCEPTANCE PRESET VERIFICATION:
+   - Applied Quality Preset Screener filter (ROE > 15%, D/E < 1.0, FCF > 0 on latest annual report)
+     to financial_ratios table.
+   - Excluded known data-gap/corrupted firms (SBIN, BEL, HAL) and 16 banking-template institutions.
+   - Result: Exactly 34 companies qualified (satisfying acceptance criterion: 10 <= count <= 50).
+   - Confirmed: SQL null semantics naturally exclude neutralized companies without distorting screener results.
+
+B. CANONICAL DATA AUTHORITY POLICY:
+   - All downstream modules (Sprint 3 Screener, Sprint 4 Streamlit Dashboard, Sprint 6 FastAPI)
+     MUST query financial_ratios table as the sole canonical source of truth.
+   - Master dataset columns in companies.xlsx (roce_percentage, roe_percentage) are auxiliary
+     reference metadata only.
