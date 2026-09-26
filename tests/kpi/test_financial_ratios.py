@@ -165,6 +165,7 @@ def test_financial_ratios_composite_quality_score_complete(fr_df):
     assert (fr_df["composite_quality_score"] >= 0).all()
     assert (fr_df["composite_quality_score"] <= 100).all()
 
+
 def test_financial_ratios_bel_hal_remediation(fr_df):
     """Verify BEL and HAL balance-sheet ratios are None with data_quality_flag=1 and label='Unreliable Balance Sheet Data'."""
     for cid in ["BEL", "HAL"]:

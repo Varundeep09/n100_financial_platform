@@ -99,7 +99,9 @@ def ensure_financial_ratios_schema(conn: sqlite3.Connection) -> None:
     cursor.execute("PRAGMA table_info(financial_ratios);")
     cols = [r[1] for r in cursor.fetchall()]
     if cols and "extreme_magnitude_flag" not in cols:
-        logger.info("Migrating financial_ratios table to include extreme_magnitude_flag and data_quality fields...")
+        logger.info(
+            "Migrating financial_ratios table to include extreme_magnitude_flag and data_quality fields..."
+        )
         cursor.execute("DROP TABLE IF EXISTS financial_ratios;")
         conn.commit()
     conn.executescript(FINANCIAL_RATIOS_DDL)

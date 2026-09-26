@@ -22,7 +22,6 @@ import pytest
 from src.analytics.ratios import (
     FINANCIALS_SECTOR_COMPANIES,
     OPM_DISCREPANCIES,
-    UNRELIABLE_BALANCESHEET_COMPANIES,
     calculate_profitability_metrics,
     check_extreme_magnitude_flag,
     check_high_leverage_flag,
@@ -582,6 +581,7 @@ def test_sbin_bs_ratios_return_none() -> None:
         assert bool(row["icr_risk_flag"]) is False
         assert row["net_debt"] is None
         assert row["asset_turnover"] is None
+
 
 def test_bel_hal_unreliable_balancesheet_neutralized() -> None:
     """Verify BEL and HAL balance sheet ratios are neutralized to None with data_quality_flag=True."""

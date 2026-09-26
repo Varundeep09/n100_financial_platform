@@ -574,7 +574,9 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
         raw_roa_val = compute_roa(true_net_profit, row.get("total_assets"))
 
         # 4. Extreme magnitude flag (evaluated on raw denominators / known outliers)
-        extreme_flag = check_extreme_magnitude_flag(raw_roe_val, raw_roce_val, raw_roa_val)
+        extreme_flag = check_extreme_magnitude_flag(
+            raw_roe_val, raw_roce_val, raw_roa_val
+        )
         if comp_id in UNRELIABLE_BALANCESHEET_COMPANIES or comp_id == "INDIGO":
             extreme_flag = True
 
