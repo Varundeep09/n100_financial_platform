@@ -228,6 +228,53 @@ ROE Anomaly Breakdown (18 Total):
 - Formula discrepancy: 8 (NESTLEIND, LICI, BAJAJFINSV, COALINDIA, PFC, BPCL, IRCTC, ADANIENT)
 
 ----------------------------------------------------------------------------------------------------
+D. BALANCE SHEET CORRUPTION REMEDIATION: BEL & HAL (SEP 26, 2026)
+----------------------------------------------------------------------------------------------------
+1. DIAGNOSIS & REJECTION OF RAW VALUES:
+   - Bharat Electronics Ltd (BEL) and Hindustan Aeronautics Ltd (HAL) exhibited raw computed ROE of
+     4,744.05% and 3,816.58%, and ROCE of 3,628.35% and 2,590.99% across all historical reporting periods.
+   - Raw balance sheet line items (equity capital, reserves, borrowings, total assets) in `data/raw/balancesheet.xlsx`
+     are confirmed corrupted and scaled down ~100x relative to Profit & Loss statement figures (which report
+     in actual Crores: BEL Sales Rs 20,268 Cr, PAT Rs 3,985 Cr vs. raw BS Equity 11, Reserves 73).
+   - Storing 4,744% and 3,816% ROE in production would distort downstream screeners (e.g. Day 14 ROE > 15 & D/E < 1)
+     and undermine platform credibility.
+
+2. EVALUATION OF REMEDIATION OPTIONS:
+   - Option B (Correction Multiplier): Evaluated applying an arbitrary 100x/200x scaling factor.
+     Forensic analysis revealed line items do not scale with a uniform integer ratio across reserves, assets,
+     and borrowings. Fabricating an estimated scaling factor would violate accounting data integrity.
+   - Option A (Active Neutralization - SELECTED):
+     * Implemented standard institutional remediation (identical to SBIN's source-gap policy).
+     * Added `extreme_magnitude_flag` (INTEGER 0/1), `data_quality_flag` (INTEGER 0/1), and
+       `data_quality_label` (VARCHAR) to `financial_ratios` table schema (50 columns total).
+     * For all rows of BEL and HAL:
+       - `return_on_equity_pct` = None
+       - `return_on_capital_employed_pct` = None
+       - `return_on_assets_pct` = None
+       - `debt_to_equity` = None
+       - `asset_turnover` = None
+       - `net_debt_cr` = None
+       - `total_debt_cr` = None
+       - `book_value_per_share` = None
+       - `extreme_magnitude_flag` = 1 (True)
+       - `data_quality_flag` = 1 (True)
+       - `data_quality_label` = 'Unreliable Balance Sheet Data'
+     * For INDIGO:
+       - True post-COVID airline recovery metrics preserved (ROE 892.57%, ROCE 1064.91%).
+       - `extreme_magnitude_flag` = 1 (True)
+       - `data_quality_flag` = 0 (False)
+       - `data_quality_label` = 'Extreme Magnitude'
+
+3. RE-VERIFICATION ACROSS ALL 92 COMPANIES (|ROE| > 500% or |ROCE| > 500%):
+   - Re-queried entire database: SELECT company_id, year, return_on_equity_pct, return_on_capital_employed_pct
+     FROM financial_ratios WHERE ABS(return_on_equity_pct) > 500.0 OR ABS(return_on_capital_employed_pct) > 500.0:
+     * BEL & HAL: 0 rows (100% cleanly neutralized to None).
+     * INDIGO: 9 rows (legitimate post-COVID and startup thin/negative equity base, all extreme_magnitude_flag = 1).
+     * LT: 4 historical rows (FY13-FY16, extreme_magnitude_flag = 1).
+     * PNB: 1 historical row (FY13-03, extreme_magnitude_flag = 1; banking template OPM/ROCE/ICR are None).
+   - Confirmed: Zero unhandled/unflagged extreme ratio outliers exist anywhere in the platform.
+
+----------------------------------------------------------------------------------------------------
 C. FULL AUDIT SYNTHESIS & ARCHITECTURAL DECISION:
 - Combined Unique Companies Logged Across ROCE & ROE: 32 companies
   * Data source issues: 6 companies (BEL, HAL, INDIGO, LT, PNB, TCS)

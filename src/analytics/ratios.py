@@ -74,6 +74,12 @@ FINANCIALS_SECTOR_COMPANIES: set[str] = {
     "SHRIRAMFIN",
 }
 
+# Companies with confirmed ~100x corrupted/scaled-down raw balance sheet figures
+UNRELIABLE_BALANCESHEET_COMPANIES: set[str] = {
+    "BEL",  # Bharat Electronics: raw BS equity/reserves ~100x lower than P&L figures (ROE 4744%, ROCE 3628%)
+    "HAL",  # Hindustan Aeronautics: raw BS equity/reserves ~100x lower than P&L figures (ROE 3816%, ROCE 2590%)
+}
+
 
 def normalize_pl_statement(
     sales: float | None,
@@ -493,6 +499,8 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
     roa_list: list[float | None] = []
     norm_status_list: list[str] = []
     extreme_flag_list: list[bool] = []
+    dq_flag_list: list[bool] = []
+    dq_label_list: list[str] = []
 
     # Leverage & Efficiency lists (Day 9)
     de_list: list[float | None] = []
@@ -547,15 +555,12 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
         )
         opm_list.append(opm_val)
 
-        # 3. ROE
-        roe_val = compute_roe(
+        # 3. Raw Ratio Computations
+        raw_roe_val = compute_roe(
             true_net_profit,
             row.get("equity_capital"),
             row.get("reserves"),
         )
-        roe_list.append(roe_val)
-
-        # 4. ROCE
         roce_dict = compute_roce(
             true_op,
             true_depr,
@@ -565,35 +570,61 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
             broad_sector=broad_sector,
             is_banking_template=is_banking_template,
         )
-        roce_val = roce_dict["value"]
+        raw_roce_val = roce_dict["value"]
+        raw_roa_val = compute_roa(true_net_profit, row.get("total_assets"))
+
+        # 4. Extreme magnitude flag (evaluated on raw denominators / known outliers)
+        extreme_flag = check_extreme_magnitude_flag(raw_roe_val, raw_roce_val, raw_roa_val)
+        if comp_id in UNRELIABLE_BALANCESHEET_COMPANIES or comp_id == "INDIGO":
+            extreme_flag = True
+
+        # 5. Balance Sheet Remediation for Confirmed Corrupted Datasets (BEL, HAL)
+        if comp_id in UNRELIABLE_BALANCESHEET_COMPANIES:
+            roe_val = None
+            roce_val = None
+            roa_val = None
+            de_val = None
+            high_lev_flag = False
+            net_debt_val = None
+            at_val = None
+            dq_flag = True
+            dq_label = "Unreliable Balance Sheet Data"
+        else:
+            roe_val = raw_roe_val
+            roce_val = raw_roce_val
+            roa_val = raw_roa_val
+            de_val = compute_debt_to_equity(
+                borrowings=row.get("borrowings"),
+                equity_capital=row.get("equity_capital"),
+                reserves=row.get("reserves"),
+            )
+            high_lev_flag = check_high_leverage_flag(
+                debt_to_equity=de_val,
+                broad_sector=broad_sector,
+                company_id=comp_id,
+            )
+            net_debt_val = compute_net_debt(
+                borrowings=row.get("borrowings"),
+                investments=row.get("investments"),
+            )
+            at_val = compute_asset_turnover(
+                sales=true_sales,
+                total_assets=row.get("total_assets"),
+            )
+            dq_flag = False
+            dq_label = "Extreme Magnitude" if extreme_flag else "Normal"
+
+        roe_list.append(roe_val)
         roce_list.append(roce_val)
         roce_sec_list.append(roce_dict["sector_relative"])
-
-        # 5. ROA
-        roa_val = compute_roa(true_net_profit, row.get("total_assets"))
         roa_list.append(roa_val)
-
-        # 6. Extreme magnitude flag
-        extreme_flag = check_extreme_magnitude_flag(roe_val, roce_val, roa_val)
         extreme_flag_list.append(extreme_flag)
-
-        # 7. Debt-to-Equity
-        de_val = compute_debt_to_equity(
-            borrowings=row.get("borrowings"),
-            equity_capital=row.get("equity_capital"),
-            reserves=row.get("reserves"),
-        )
+        dq_flag_list.append(dq_flag)
+        dq_label_list.append(dq_label)
         de_list.append(de_val)
-
-        # 8. High Leverage Flag
-        high_lev_flag = check_high_leverage_flag(
-            debt_to_equity=de_val,
-            broad_sector=broad_sector,
-            company_id=comp_id,
-        )
         high_lev_list.append(high_lev_flag)
 
-        # 9. Interest Coverage Ratio (ICR)
+        # 6. Interest Coverage Ratio (ICR)
         icr_dict = compute_interest_coverage(
             operating_profit=true_op,
             other_income=true_oth,
@@ -605,18 +636,8 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
         icr_label_list.append(icr_dict["label"])
         icr_risk_list.append(icr_dict["risk_flag"])
 
-        # 10. Net Debt
-        net_debt_val = compute_net_debt(
-            borrowings=row.get("borrowings"),
-            investments=row.get("investments"),
-        )
+        # 7. Net Debt and Asset Turnover
         net_debt_list.append(net_debt_val)
-
-        # 11. Asset Turnover
-        at_val = compute_asset_turnover(
-            sales=true_sales,
-            total_assets=row.get("total_assets"),
-        )
         asset_turnover_list.append(at_val)
 
     # Attach columns to DataFrame
@@ -627,6 +648,8 @@ def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
     out_df["roce_sector_relative"] = roce_sec_list
     out_df["roa_pct"] = roa_list
     out_df["extreme_magnitude_flag"] = extreme_flag_list
+    out_df["data_quality_flag"] = dq_flag_list
+    out_df["data_quality_label"] = dq_label_list
     out_df["pl_normalization_status"] = norm_status_list
 
     # Leverage & Efficiency columns

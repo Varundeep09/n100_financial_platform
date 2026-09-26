@@ -200,9 +200,14 @@ CREATE TABLE IF NOT EXISTS financial_ratios (
     cash_from_operations_cr NUMERIC,
     composite_quality_score NUMERIC,
     sector_relative_flag INTEGER,
+    extreme_magnitude_flag INTEGER,
+    data_quality_flag INTEGER,
+    data_quality_label VARCHAR(50),
     PRIMARY KEY (company_id, year),
     FOREIGN KEY (company_id) REFERENCES companies(id) ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 CREATE INDEX IF NOT EXISTS idx_fr_company_year ON financial_ratios(company_id, year);
 CREATE INDEX IF NOT EXISTS idx_fr_quality_score ON financial_ratios(composite_quality_score);
+CREATE INDEX IF NOT EXISTS idx_fr_data_quality ON financial_ratios(data_quality_flag);
+CREATE INDEX IF NOT EXISTS idx_fr_extreme_magnitude ON financial_ratios(extreme_magnitude_flag);

@@ -22,6 +22,7 @@ import pytest
 from src.analytics.ratios import (
     FINANCIALS_SECTOR_COMPANIES,
     OPM_DISCREPANCIES,
+    UNRELIABLE_BALANCESHEET_COMPANIES,
     calculate_profitability_metrics,
     check_extreme_magnitude_flag,
     check_high_leverage_flag,
@@ -581,3 +582,25 @@ def test_sbin_bs_ratios_return_none() -> None:
         assert bool(row["icr_risk_flag"]) is False
         assert row["net_debt"] is None
         assert row["asset_turnover"] is None
+
+def test_bel_hal_unreliable_balancesheet_neutralized() -> None:
+    """Verify BEL and HAL balance sheet ratios are neutralized to None with data_quality_flag=True."""
+    if not DB_PATH.exists():
+        pytest.skip("Database db/nifty100.db not present")
+
+    for cid in ["BEL", "HAL"]:
+        df_co = get_financial_statements_data(company_id=cid, db_path=DB_PATH)
+        assert not df_co.empty
+        metrics_df = calculate_profitability_metrics(df_co)
+        assert not metrics_df.empty
+
+        for _, row in metrics_df.iterrows():
+            assert row["roe_pct"] is None
+            assert row["roce_pct"] is None
+            assert row["roa_pct"] is None
+            assert row["debt_to_equity"] is None
+            assert bool(row["high_leverage_flag"]) is False
+            assert row["asset_turnover"] is None
+            assert bool(row["extreme_magnitude_flag"]) is True
+            assert bool(row["data_quality_flag"]) is True
+            assert row["data_quality_label"] == "Unreliable Balance Sheet Data"

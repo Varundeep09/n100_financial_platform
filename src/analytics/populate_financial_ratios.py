@@ -22,6 +22,7 @@ from src.analytics.ratios import (
     DB_PATH,
     FINANCIALS_SECTOR_COMPANIES,
     REPO_ROOT,
+    UNRELIABLE_BALANCESHEET_COMPANIES,
     calculate_profitability_metrics,
 )
 
@@ -78,17 +79,29 @@ CREATE TABLE IF NOT EXISTS financial_ratios (
     cash_from_operations_cr NUMERIC,
     composite_quality_score NUMERIC,
     sector_relative_flag INTEGER,
+    extreme_magnitude_flag INTEGER,
+    data_quality_flag INTEGER,
+    data_quality_label VARCHAR(50),
     PRIMARY KEY (company_id, year),
     FOREIGN KEY (company_id) REFERENCES companies(id) ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 CREATE INDEX IF NOT EXISTS idx_fr_company_year ON financial_ratios(company_id, year);
 CREATE INDEX IF NOT EXISTS idx_fr_quality_score ON financial_ratios(composite_quality_score);
+CREATE INDEX IF NOT EXISTS idx_fr_data_quality ON financial_ratios(data_quality_flag);
+CREATE INDEX IF NOT EXISTS idx_fr_extreme_magnitude ON financial_ratios(extreme_magnitude_flag);
 """
 
 
 def ensure_financial_ratios_schema(conn: sqlite3.Connection) -> None:
     """Execute DDL to ensure financial_ratios table and indexes exist."""
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(financial_ratios);")
+    cols = [r[1] for r in cursor.fetchall()]
+    if cols and "extreme_magnitude_flag" not in cols:
+        logger.info("Migrating financial_ratios table to include extreme_magnitude_flag and data_quality fields...")
+        cursor.execute("DROP TABLE IF EXISTS financial_ratios;")
+        conn.commit()
     conn.executescript(FINANCIAL_RATIOS_DDL)
 
 
@@ -212,6 +225,10 @@ def build_financial_ratios_dataframe(raw_df: pd.DataFrame) -> pd.DataFrame:
     # Book Value per Share (calculated as (equity + reserves) / (equity / face_value) with fallback)
     bvps_list: list[float | None] = []
     for _, r in raw_df.iterrows():
+        cid = str(r["company_id"])
+        if cid in UNRELIABLE_BALANCESHEET_COMPANIES:
+            bvps_list.append(None)
+            continue
         eq = r["equity_capital"]
         res = r["reserves"]
         fv = r["face_value"]
@@ -234,7 +251,17 @@ def build_financial_ratios_dataframe(raw_df: pd.DataFrame) -> pd.DataFrame:
     final_df["book_value_per_share"] = bvps_list
 
     final_df["dividend_payout_ratio_pct"] = raw_df["dividend_payout"]
-    final_df["total_debt_cr"] = raw_df["borrowings"]
+
+    # Total debt (neutralized to None for corrupted balance sheet companies)
+    debt_list: list[float | None] = []
+    for _, r in raw_df.iterrows():
+        cid = str(r["company_id"])
+        if cid in UNRELIABLE_BALANCESHEET_COMPANIES:
+            debt_list.append(None)
+        else:
+            debt_list.append(r["borrowings"])
+    final_df["total_debt_cr"] = debt_list
+
     final_df["cash_from_operations_cr"] = raw_df["operating_activity"]
 
     # 6. Sector Relative Flag
@@ -247,6 +274,11 @@ def build_financial_ratios_dataframe(raw_df: pd.DataFrame) -> pd.DataFrame:
         else:
             sec_flags.append(0)
     final_df["sector_relative_flag"] = sec_flags
+
+    # 7. Extreme Magnitude & Data Quality Flags
+    final_df["extreme_magnitude_flag"] = df_ratios["extreme_magnitude_flag"].astype(int)
+    final_df["data_quality_flag"] = df_ratios["data_quality_flag"].astype(int)
+    final_df["data_quality_label"] = df_ratios["data_quality_label"]
 
     # 7. Composite Quality Score (Average of normalized ROE, ROCE/ROA, and NPM percentile ranks)
     roe_clip = final_df["return_on_equity_pct"].clip(lower=-50.0, upper=100.0)

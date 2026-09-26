@@ -102,6 +102,9 @@ def test_financial_ratios_primary_key_and_schema():
         "cash_from_operations_cr",
         "composite_quality_score",
         "sector_relative_flag",
+        "extreme_magnitude_flag",
+        "data_quality_flag",
+        "data_quality_label",
     }
     assert expected_cols.issubset(set(pragma_df["name"].tolist()))
 
@@ -161,3 +164,40 @@ def test_financial_ratios_composite_quality_score_complete(fr_df):
     assert fr_df["composite_quality_score"].isna().sum() == 0
     assert (fr_df["composite_quality_score"] >= 0).all()
     assert (fr_df["composite_quality_score"] <= 100).all()
+
+def test_financial_ratios_bel_hal_remediation(fr_df):
+    """Verify BEL and HAL balance-sheet ratios are None with data_quality_flag=1 and label='Unreliable Balance Sheet Data'."""
+    for cid in ["BEL", "HAL"]:
+        sub = fr_df[fr_df["company_id"] == cid]
+        assert not sub.empty
+        assert sub["return_on_equity_pct"].isna().all()
+        assert sub["return_on_capital_employed_pct"].isna().all()
+        assert sub["return_on_assets_pct"].isna().all()
+        assert sub["debt_to_equity"].isna().all()
+        assert sub["asset_turnover"].isna().all()
+        assert (sub["extreme_magnitude_flag"] == 1).all()
+        assert (sub["data_quality_flag"] == 1).all()
+        assert (sub["data_quality_label"] == "Unreliable Balance Sheet Data").all()
+
+
+def test_financial_ratios_indigo_extreme_magnitude_flag(fr_df):
+    """Verify INDIGO has extreme_magnitude_flag=1 while preserving computed ratios."""
+    sub = fr_df[fr_df["company_id"] == "INDIGO"]
+    assert not sub.empty
+    row_24 = sub[sub["year"] == "2024-03"].iloc[0]
+    assert row_24["extreme_magnitude_flag"] == 1
+    assert row_24["data_quality_flag"] == 0
+    assert row_24["return_on_equity_pct"] > 800.0
+
+
+def test_financial_ratios_no_unhandled_outliers_over_500_pct(fr_df):
+    """Verify no unflagged company exhibits |ROE| > 500% or |ROCE| > 500% (BEL/HAL neutralized)."""
+    outliers = fr_df[
+        (fr_df["return_on_equity_pct"].abs() > 500.0)
+        | (fr_df["return_on_capital_employed_pct"].abs() > 500.0)
+    ]
+    # BEL and HAL must NOT appear in outliers
+    assert "BEL" not in outliers["company_id"].unique()
+    assert "HAL" not in outliers["company_id"].unique()
+    # All remaining extreme outliers must have extreme_magnitude_flag = 1
+    assert (outliers["extreme_magnitude_flag"] == 1).all()
