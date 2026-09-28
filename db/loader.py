@@ -246,6 +246,24 @@ def transform_market_cap(df: pd.DataFrame, valid_tickers: set[str]) -> pd.DataFr
     return clean_df[[c for c in cols if c in clean_df.columns]]
 
 
+def transform_peer_groups(df: pd.DataFrame, valid_tickers: set[str]) -> pd.DataFrame:
+    """Validate, clean, and standardize peer groups dataset for peer comparison."""
+    clean_df = df.copy()
+    clean_df["company_id"] = clean_df["company_id"].apply(normalize_ticker)
+    clean_df["peer_group_name"] = clean_df["peer_group_name"].astype(str).str.strip()
+    if "is_benchmark" in clean_df.columns:
+        clean_df["is_benchmark"] = clean_df["is_benchmark"].astype(bool)
+    else:
+        clean_df["is_benchmark"] = False
+
+    clean_df = clean_df[clean_df["company_id"].isin(valid_tickers)]
+    clean_df = clean_df.drop_duplicates(
+        subset=["peer_group_name", "company_id"], keep="last"
+    )
+    cols = ["peer_group_name", "company_id", "is_benchmark"]
+    return clean_df[[c for c in cols if c in clean_df.columns]]
+
+
 def load_all_tables(
     db_path: Path = DB_PATH,
     schema_path: Path = SCHEMA_PATH,
@@ -466,23 +484,26 @@ def load_all_tables(
             f"Profiled 'financial_ratios' (Sprint 2 computed): {len(raw_ratios)} raw rows"
         )
 
-        # 12. Supplementary File: Peer Groups (Profiled, held for Sprint 3)
+        # 12. Supplementary File: Peer Groups (Sprint 3 Peer Comparison)
         t0 = time.perf_counter()
         raw_peers = load_supporting_file("peer_groups.xlsx")
+        clean_peers = transform_peer_groups(raw_peers, valid_tickers)
+        clean_peers.to_sql("peer_groups", conn, if_exists="append", index=False)
         dt = time.perf_counter() - t0
         audit_rows.append(
             {
                 "table": "peer_groups",
                 "rows_in": len(raw_peers),
-                "rows_out": 0,
-                "rejected": 0,
+                "rows_out": len(clean_peers),
+                "rejected": len(raw_peers) - len(clean_peers),
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "runtime_s": round(dt, 4),
             }
         )
         logger.info(
-            f"Profiled 'peer_groups' (Sprint 3 screener): {len(raw_peers)} raw rows"
+            f"Loaded 'peer_groups': {len(clean_peers)}/{len(raw_peers)} rows written to DB"
         )
+        counts["peer_groups"] = len(clean_peers)
 
         # Write load_audit.csv
         audit_df = pd.DataFrame(audit_rows)

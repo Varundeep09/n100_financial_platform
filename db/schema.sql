@@ -211,3 +211,16 @@ CREATE INDEX IF NOT EXISTS idx_fr_company_year ON financial_ratios(company_id, y
 CREATE INDEX IF NOT EXISTS idx_fr_quality_score ON financial_ratios(composite_quality_score);
 CREATE INDEX IF NOT EXISTS idx_fr_data_quality ON financial_ratios(data_quality_flag);
 CREATE INDEX IF NOT EXISTS idx_fr_extreme_magnitude ON financial_ratios(extreme_magnitude_flag);
+
+-- 12. Peer Groups (M:N mapping for peer comparison & radar analytics)
+CREATE TABLE IF NOT EXISTS peer_groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    peer_group_name VARCHAR(100) NOT NULL,
+    company_id VARCHAR(20) NOT NULL,
+    is_benchmark BOOLEAN NOT NULL DEFAULT 0,
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    UNIQUE (peer_group_name, company_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_peer_groups_name ON peer_groups(peer_group_name);
+CREATE INDEX IF NOT EXISTS idx_peer_groups_company ON peer_groups(company_id);
