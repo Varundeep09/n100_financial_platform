@@ -69,16 +69,26 @@ def load_screener_universe(db_path: Path | str = DEFAULT_DB_PATH) -> pd.DataFram
         raise FileNotFoundError(f"Database not found at: {resolved_db}")
 
     query = """
-    WITH latest_fr AS (
+    WITH march_latest AS (
         SELECT company_id, MAX(year) AS max_year
         FROM financial_ratios
         WHERE year LIKE '%-03'
         GROUP BY company_id
     ),
+    siemens_latest AS (
+        SELECT company_id, MAX(year) AS max_year
+        FROM financial_ratios
+        WHERE company_id = 'SIEMENS'
+        GROUP BY company_id
+    ),
+    latest_fr AS (
+        SELECT * FROM march_latest
+        UNION ALL
+        SELECT * FROM siemens_latest
+    ),
     latest_mc AS (
         SELECT company_id, MAX(year) AS max_year
         FROM market_cap
-        WHERE year LIKE '%-03'
         GROUP BY company_id
     )
     SELECT 
@@ -98,8 +108,10 @@ def load_screener_universe(db_path: Path | str = DEFAULT_DB_PATH) -> pd.DataFram
       ON fr.company_id = c.id
     LEFT JOIN sectors s 
       ON fr.company_id = s.company_id
+    LEFT JOIN latest_mc lmc
+      ON fr.company_id = lmc.company_id
     LEFT JOIN market_cap mc 
-      ON fr.company_id = mc.company_id AND fr.year = mc.year
+      ON fr.company_id = mc.company_id AND mc.year = lmc.max_year
     ORDER BY fr.company_id ASC;
     """
 

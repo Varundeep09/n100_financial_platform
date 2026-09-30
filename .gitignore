@@ -26,3 +26,6 @@ reports/pytest_report.html
 # OS and editor
 .DS_Store
 .vscode/
+
+!screener_output.xlsx
+!reports/screener_output/*.xlsx
