@@ -1,0 +1,192 @@
+# ==============================================================================
+# NIFTY 100 FINANCIAL INTELLIGENCE PLATFORM - SCREENER CONFIGURATION
+# File: screener_config.yaml
+# Module 3: Company Screener & Filter Engine
+# Description: Centralized, analyst-editable configuration file for multi-criteria
+#              fundamental filtering, presets, and trend analysis.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. DEFAULT REFERENCE THRESHOLDS (15 Core Financial Metrics + Trend Flags)
+# These represent baseline institutional screening criteria across the N100 universe.
+# ------------------------------------------------------------------------------
+thresholds:
+  # 1. Return on Equity (ROE) [%]
+  # Filters for shareholder wealth creation. Benchmark >15% indicates a durable competitive moat.
+  return_on_equity_pct:
+    min: 15.0
+    description: "Minimum Return on Equity (%) - measures net profit per unit of shareholder equity"
+
+  # 2. Return on Capital Employed (ROCE) [%]
+  # Evaluates operational capital efficiency across debt and equity capital. >15% exceeds standard cost of capital.
+  return_on_capital_employed_pct:
+    min: 15.0
+    description: "Minimum Return on Capital Employed (%) - measures EBIT per total capital employed"
+
+  # 3. Operating Profit Margin (OPM) [%]
+  # Core operational profitability before interest and taxes. >15% is standard for pricing power franchises.
+  operating_profit_margin_pct:
+    min: 15.0
+    description: "Minimum Operating Profit Margin (%) - core operating profit / sales"
+
+  # 4. Net Profit Margin (NPM) [%]
+  # Bottom-line margin after all taxes and finance costs. >10% ensures strong buffer against cost inflation.
+  net_profit_margin_pct:
+    min: 10.0
+    description: "Minimum Net Profit Margin (%) - net profit / sales"
+
+  # 5. Debt-to-Equity (D/E) [ratio]
+  # Solvency risk threshold. <1.0 denotes conservative leverage; <0.5 indicates fortress balance sheet.
+  debt_to_equity:
+    max: 1.0
+    description: "Maximum Debt-to-Equity - borrowings / (equity capital + reserves)"
+
+  # 6. Interest Coverage Ratio (ICR) [multiple]
+  # Debt servicing capacity. >3.0x indicates safe interest coverage even under adverse cash flow conditions.
+  interest_coverage:
+    min: 3.0
+    description: "Minimum Interest Coverage Ratio - EBIT / interest expense"
+
+  # 7. Free Cash Flow (FCF) [INR Crore]
+  # Organic cash generation after operational investments. >0 ensures business does not rely on external funding.
+  free_cash_flow_cr:
+    min: 0.0
+    description: "Minimum Free Cash Flow (INR Cr) - CFO + CFI (operating cash minus capex)"
+
+  # 8. CFO Quality Score (CFO / PAT) [ratio]
+  # Earnings quality indicator. >0.8 ensures net profits convert into actual cash rather than accrual receivables.
+  cfo_quality_score:
+    min: 0.8
+    description: "Minimum CFO Quality Score - Cash Flow from Operations / Net Profit"
+
+  # 9. CapEx Intensity [%]
+  # Capital reinvestment requirements as % of revenue. <3% identifies asset-light scalability.
+  capex_intensity_pct:
+    max: 3.0
+    description: "Maximum CapEx Intensity (%) - absolute capex / sales"
+
+  # 10. Revenue CAGR (3-Year) [%]
+  # Medium-term top-line sales compounding. >10% outpaces broad Indian GDP growth.
+  revenue_cagr_3yr:
+    min: 10.0
+    description: "Minimum 3-Year Revenue CAGR (%) - annualized sales growth over 3 years"
+
+  # 11. Revenue CAGR (5-Year) [%]
+  # Long-term sales compounding sustainability. >10% demonstrates secular volume/pricing tailwinds.
+  revenue_cagr_5yr:
+    min: 10.0
+    description: "Minimum 5-Year Revenue CAGR (%) - annualized sales growth over 5 years"
+
+  # 12. PAT CAGR (3-Year) [%]
+  # Bottom-line net profit growth rate. >15% indicates operating leverage and margin expansion.
+  pat_cagr_3yr:
+    min: 15.0
+    description: "Minimum 3-Year PAT CAGR (%) - annualized net profit growth over 3 years"
+
+  # 13. PAT CAGR (5-Year) [%]
+  # Long-term profitability trajectory. >12% confirms sustained earnings compounding.
+  pat_cagr_5yr:
+    min: 12.0
+    description: "Minimum 5-Year PAT CAGR (%) - annualized net profit growth over 5 years"
+
+  # 14. Price-to-Earnings Ratio (P/E) [multiple]
+  # Relative equity valuation. <20x filters for reasonably priced or undervalued fundamental compounders.
+  pe_ratio:
+    max: 20.0
+    description: "Maximum Price-to-Earnings (P/E) multiple - market price / EPS"
+
+  # 15. Price-to-Book Ratio (P/B) [multiple]
+  # Asset valuation multiple. <3.0x provides margin of safety against tangible net asset value.
+  pb_ratio:
+    max: 3.0
+    description: "Maximum Price-to-Book (P/B) multiple - market price / BVPS"
+
+  # Supplementary Filters
+  dividend_payout_ratio_pct:
+    min: 30.0
+    description: "Minimum Dividend Payout Ratio (%) - dividend paid / net profit"
+
+  dividend_yield_pct:
+    min: 1.0
+    description: "Minimum Dividend Yield (%) - dividend per share / market price"
+
+  accelerating_revenue_growth:
+    enabled: false
+    description: "Trend Direction Filter - requires Revenue CAGR 3yr > Revenue CAGR 5yr"
+
+# ------------------------------------------------------------------------------
+# 2. PRESET SCREENER TEMPLATES (6 Production Screens)
+# ------------------------------------------------------------------------------
+presets:
+  # Preset 1: Quality Compounder
+  # High ROE, low leverage, positive FCF, solid 3yr revenue compounding, and robust operating margins.
+  quality_compounder:
+    name: "Quality Compounder"
+    description: "High return, low leverage, positive cash flow, and steady revenue expansion."
+    logic: "AND"
+    filters:
+      return_on_equity_pct: { min: 15.0 }
+      debt_to_equity: { max: 1.0 }
+      free_cash_flow_cr: { min: 0.0 }
+      revenue_cagr_3yr: { min: 10.0 }
+      operating_profit_margin_pct: { min: 10.0 }
+
+  # Preset 2: Value Pick
+  # Undervalued fundamental franchises with reasonable P/E, conservative P/B, sound ROE, and manageable debt.
+  # Note: Calibrated ROE threshold to 11.0% to capture quality manufacturing compounders (e.g. MOTHERSON ROE 11.55%).
+  value_pick:
+    name: "Value Pick"
+    description: "Deep value compounders with low P/E, low P/B, resilient returns, and controlled debt."
+    logic: "AND"
+    filters:
+      pe_ratio: { max: 20.0 }
+      pb_ratio: { max: 3.0 }
+      return_on_equity_pct: { min: 11.0 }
+      debt_to_equity: { max: 2.0 }
+
+  # Preset 3: Dividend Aristocrat
+  # Strong cash generation distributing dividends with low debt and healthy returns.
+  dividend_aristocrat:
+    name: "Dividend Aristocrat"
+    description: "Generous dividend payers backed by positive free cash flow and conservative balance sheets."
+    logic: "AND"
+    filters:
+      dividend_payout_ratio_pct: { min: 30.0 }
+      free_cash_flow_cr: { min: 0.0 }
+      debt_to_equity: { max: 1.0 }
+      return_on_equity_pct: { min: 12.0 }
+
+  # Preset 4: Growth Rocket
+  # Accelerating compounders with rapid revenue and profit growth and resilient operating margins.
+  growth_rocket:
+    name: "Growth Rocket"
+    description: "High-octane growth franchises with 3yr top and bottom line expansion exceeding 20%."
+    logic: "AND"
+    filters:
+      revenue_cagr_3yr: { min: 20.0 }
+      pat_cagr_3yr: { min: 20.0 }
+      operating_profit_margin_pct: { min: 15.0 }
+
+  # Preset 5: Asset Light Champion
+  # Asset-light business models requiring minimal capex reinvestment while generating huge returns and margins.
+  asset_light_champion:
+    name: "Asset Light Champion"
+    description: "Asset-light franchises generating high ROE and high margins with minimal capital expenditures."
+    logic: "AND"
+    filters:
+      capex_intensity_pct: { max: 3.0 }
+      return_on_equity_pct: { min: 20.0 }
+      operating_profit_margin_pct: { min: 20.0 }
+
+  # Preset 6: Financial Health
+  # Balance sheet fortresses with high interest coverage, conservative leverage, strong CFO conversion, and positive FCF.
+  # Note: Calibrated CFO quality score to 0.91 to isolate the top 30 pristine balance sheets in Nifty 100.
+  financial_health:
+    name: "Financial Health"
+    description: "Pristine balance sheets with minimal debt, high interest coverage, and exceptional cash generation."
+    logic: "AND"
+    filters:
+      interest_coverage: { min: 3.0 }
+      debt_to_equity: { max: 0.5 }
+      cfo_quality_score: { min: 0.91 }
+      free_cash_flow_cr: { min: 0.0 }
