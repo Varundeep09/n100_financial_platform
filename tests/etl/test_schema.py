@@ -48,6 +48,7 @@ def test_schema_creates_all_10_tables(memory_db: sqlite3.Connection) -> None:
         "market_cap",
         "financial_ratios",
         "peer_groups",
+        "peer_percentiles",
     }
     assert set(tables) == expected_tables
 

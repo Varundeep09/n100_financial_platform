@@ -224,3 +224,20 @@ CREATE TABLE IF NOT EXISTS peer_groups (
 
 CREATE INDEX IF NOT EXISTS idx_peer_groups_name ON peer_groups(peer_group_name);
 CREATE INDEX IF NOT EXISTS idx_peer_groups_company ON peer_groups(company_id);
+
+CREATE TABLE IF NOT EXISTS peer_percentiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_id VARCHAR(20) NOT NULL,
+    peer_group_name VARCHAR(100) NOT NULL,
+    metric_name VARCHAR(50) NOT NULL,
+    metric_value NUMERIC,
+    percentile_rank NUMERIC,
+    classification VARCHAR(20),
+    benchmark_gap_pct NUMERIC,
+    year VARCHAR(10) NOT NULL,
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    UNIQUE (company_id, peer_group_name, metric_name, year)
+);
+
+CREATE INDEX IF NOT EXISTS idx_peer_percentiles_lookup ON peer_percentiles(peer_group_name, metric_name);
+CREATE INDEX IF NOT EXISTS idx_peer_percentiles_company ON peer_percentiles(company_id, metric_name);

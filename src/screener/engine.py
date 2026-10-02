@@ -99,7 +99,9 @@ def load_screener_universe(db_path: Path | str = DEFAULT_DB_PATH) -> pd.DataFram
         s.index_weight_pct,
         mc.pe_ratio,
         mc.pb_ratio,
+        mc.ev_ebitda,
         mc.market_cap_crore,
+        mc.enterprise_value_crore,
         mc.dividend_yield_pct
     FROM financial_ratios fr
     JOIN latest_fr lfr 
