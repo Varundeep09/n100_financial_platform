@@ -11,6 +11,11 @@ from src.analytics.peer import (
     populate_peer_percentiles,
 )
 from src.analytics.populate_financial_ratios import populate_financial_ratios
+from src.analytics.radar import (
+    RADAR_AXIS_CONFIG,
+    generate_all_radar_charts,
+    generate_single_radar_chart,
+)
 from src.analytics.ratios import (
     BANKING_TEMPLATE_COMPANIES,
     FINANCIALS_SECTOR_COMPANIES,
@@ -22,6 +27,7 @@ __all__ = [
     "BANKING_TEMPLATE_COMPANIES",
     "FINANCIALS_SECTOR_COMPANIES",
     "PEER_METRICS",
+    "RADAR_AXIS_CONFIG",
     "UNRELIABLE_BALANCESHEET_COMPANIES",
     "calculate_benchmark_gap",
     "calculate_cagr_metrics",
@@ -29,6 +35,8 @@ __all__ = [
     "calculate_peer_percentiles",
     "calculate_profitability_metrics",
     "classify_percentile",
+    "generate_all_radar_charts",
+    "generate_single_radar_chart",
     "get_peer_percentiles",
     "populate_financial_ratios",
     "populate_peer_percentiles",
