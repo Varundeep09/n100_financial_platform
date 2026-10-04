@@ -29,3 +29,5 @@ reports/pytest_report.html
 
 !screener_output.xlsx
 !reports/screener_output/*.xlsx
+!peer_comparison.xlsx
+!reports/peer_comparison.xlsx
