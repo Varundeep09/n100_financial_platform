@@ -77,8 +77,7 @@ def test_peer_groups_unique_constraint() -> None:
     cursor.execute("PRAGMA foreign_keys = ON;")
     cursor.execute("CREATE TABLE companies (id VARCHAR(20) PRIMARY KEY);")
     cursor.execute("INSERT INTO companies VALUES ('TCS');")
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE peer_groups (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             peer_group_name VARCHAR(100) NOT NULL,
@@ -87,8 +86,7 @@ def test_peer_groups_unique_constraint() -> None:
             FOREIGN KEY (company_id) REFERENCES companies(id),
             UNIQUE (peer_group_name, company_id)
         );
-    """
-    )
+    """)
     cursor.execute(
         "INSERT INTO peer_groups (peer_group_name, company_id) VALUES ('IT Services', 'TCS');"
     )

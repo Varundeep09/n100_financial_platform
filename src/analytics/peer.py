@@ -240,8 +240,7 @@ def populate_peer_percentiles(
         cursor = conn.cursor()
 
         # Create table if not present
-        cursor.execute(
-            """
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS peer_percentiles (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 company_id VARCHAR(20) NOT NULL,
@@ -255,8 +254,7 @@ def populate_peer_percentiles(
                 FOREIGN KEY (company_id) REFERENCES companies(id) ON UPDATE CASCADE ON DELETE RESTRICT,
                 UNIQUE (company_id, peer_group_name, metric_name, year)
             );
-            """
-        )
+            """)
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_peer_percentiles_lookup ON peer_percentiles(peer_group_name, metric_name);"
         )

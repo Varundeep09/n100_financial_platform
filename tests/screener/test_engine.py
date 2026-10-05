@@ -116,7 +116,7 @@ def test_null_handling_rule(screener_data: tuple[pd.DataFrame, dict]) -> None:
 
 
 def test_trend_filter_accelerating_growth(
-    screener_data: tuple[pd.DataFrame, dict]
+    screener_data: tuple[pd.DataFrame, dict],
 ) -> None:
     """Verify trend filter confirms 3yr CAGR > 5yr CAGR."""
     df, _ = screener_data
