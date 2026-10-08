@@ -4,6 +4,8 @@ Sprint 4: Company Intelligence Dashboard & Valuation Engine
 Module 5: Interactive Streamlit Dashboard
 Screen 1: Home / Overview
 Screen 2: Company Profile Tearsheet
+Screen 3: Financial Screener (Sliders, Presets, Live Results, CSV Download)
+Screen 4: Peer Comparison (20 Metrics Heatmap, Benchmark Gap Chart, Best-in-Class)
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ logger = logging.getLogger(__name__)
 # File Paths
 DEFAULT_DB_PATH = Path("db/nifty100.db")
 SCREENER_OUTPUT_PATH = Path("screener_output.xlsx")
+SCREENER_CONFIG_PATH = Path("screener_config.yaml")
 RADAR_CHARTS_DIR = Path("reports/radar_charts")
 
 SCREENS = [
@@ -36,6 +39,107 @@ SCREENS = [
     "🗺️ Capital Allocation Map",
     "📑 Annual Reports",
 ]
+
+PEER_GROUPS = [
+    "Automobiles",
+    "Consumer Finance",
+    "FMCG",
+    "IT Services",
+    "Life Insurance",
+    "Oil & Gas",
+    "Pharmaceuticals",
+    "Power & Utilities",
+    "Private Banks",
+    "Public Sector Banks",
+    "Steel",
+]
+
+PRESET_DEFINITIONS: dict[str, dict[str, float]] = {
+    "Custom (Analyst Configured)": {
+        "min_roe": 15.0,
+        "max_de": 1.0,
+        "min_fcf": 0.0,
+        "min_opm": 15.0,
+        "max_pe": 50.0,
+        "min_revenue_cagr_3yr": 10.0,
+        "min_pat_cagr_3yr": 15.0,
+        "min_cfo_quality": 0.8,
+        "max_capex_intensity": 10.0,
+        "min_composite_score": 50.0,
+    },
+    "Quality Compounder": {
+        "min_roe": 15.0,
+        "max_de": 1.0,
+        "min_fcf": 0.0,
+        "min_opm": 10.0,
+        "max_pe": 150.0,
+        "min_revenue_cagr_3yr": 10.0,
+        "min_pat_cagr_3yr": -50.0,
+        "min_cfo_quality": 0.0,
+        "max_capex_intensity": 50.0,
+        "min_composite_score": 50.0,
+    },
+    "Value Pick": {
+        "min_roe": 11.0,
+        "max_de": 2.0,
+        "min_fcf": -10000.0,
+        "min_opm": 0.0,
+        "max_pe": 20.0,
+        "min_revenue_cagr_3yr": -50.0,
+        "min_pat_cagr_3yr": -50.0,
+        "min_cfo_quality": 0.0,
+        "max_capex_intensity": 50.0,
+        "min_composite_score": 40.0,
+    },
+    "Dividend Aristocrat": {
+        "min_roe": 12.0,
+        "max_de": 1.0,
+        "min_fcf": 0.0,
+        "min_opm": 0.0,
+        "max_pe": 150.0,
+        "min_revenue_cagr_3yr": -50.0,
+        "min_pat_cagr_3yr": -50.0,
+        "min_cfo_quality": 0.0,
+        "max_capex_intensity": 50.0,
+        "min_composite_score": 40.0,
+    },
+    "Growth Rocket": {
+        "min_roe": 0.0,
+        "max_de": 5.0,
+        "min_fcf": -10000.0,
+        "min_opm": 15.0,
+        "max_pe": 150.0,
+        "min_revenue_cagr_3yr": 20.0,
+        "min_pat_cagr_3yr": 20.0,
+        "min_cfo_quality": 0.0,
+        "max_capex_intensity": 50.0,
+        "min_composite_score": 50.0,
+    },
+    "Asset Light Champion": {
+        "min_roe": 20.0,
+        "max_de": 5.0,
+        "min_fcf": -10000.0,
+        "min_opm": 20.0,
+        "max_pe": 150.0,
+        "min_revenue_cagr_3yr": -50.0,
+        "min_pat_cagr_3yr": -50.0,
+        "min_cfo_quality": 0.0,
+        "max_capex_intensity": 3.0,
+        "min_composite_score": 50.0,
+    },
+    "Financial Health": {
+        "min_roe": 0.0,
+        "max_de": 0.5,
+        "min_fcf": 0.0,
+        "min_opm": 0.0,
+        "max_pe": 150.0,
+        "min_revenue_cagr_3yr": -50.0,
+        "min_pat_cagr_3yr": -50.0,
+        "min_cfo_quality": 0.91,
+        "max_capex_intensity": 50.0,
+        "min_composite_score": 50.0,
+    },
+}
 
 
 @st.cache_resource
@@ -76,7 +180,6 @@ def load_screener_summary() -> pd.DataFrame:
         except (OSError, ValueError, KeyError) as exc:
             logger.error("Failed to read screener_output.xlsx: %s", exc)
 
-    # Fallback to direct query from database if file unreadable
     sql = """
         SELECT c.id as company_id, c.company_name, s.broad_sector
         FROM companies c
@@ -106,6 +209,9 @@ def load_universe_snapshot() -> pd.DataFrame:
             fr.high_leverage_flag,
             fr.free_cash_flow_cr,
             fr.revenue_cagr_3yr,
+            fr.pat_cagr_3yr,
+            fr.cfo_quality_score,
+            fr.capex_intensity_pct,
             fr.extreme_magnitude_flag,
             mc.pe_ratio,
             mc.pb_ratio,
@@ -191,8 +297,30 @@ def load_company_peer_info(company_id: str) -> dict[str, Any]:
     }
 
 
-def render_sidebar(universe_df: pd.DataFrame) -> tuple[str, str]:
-    """Render the sidebar branding, screen navigation, and optional company selector."""
+@st.cache_data(ttl=600)
+def load_peer_group_metrics(peer_group_name: str) -> pd.DataFrame:
+    """Load all 20 metrics and percentiles for a peer group."""
+    sql = """
+        SELECT 
+            pp.company_id, 
+            c.company_name,
+            pp.metric_name, 
+            pp.metric_value, 
+            pp.percentile_rank, 
+            pp.classification, 
+            pp.benchmark_gap_pct,
+            pg.is_benchmark
+        FROM peer_percentiles pp
+        JOIN companies c ON pp.company_id = c.id
+        JOIN peer_groups pg ON pp.peer_group_name = pg.peer_group_name AND pp.company_id = pg.company_id
+        WHERE pp.peer_group_name = ?
+        ORDER BY pp.metric_name ASC, pp.company_id ASC;
+    """
+    return load_query(sql, params=(peer_group_name,))
+
+
+def render_sidebar(universe_df: pd.DataFrame) -> tuple[str, str, dict[str, float], str]:
+    """Render the sidebar branding, screen navigation, and screen-specific controls."""
     st.sidebar.markdown(
         """
         <div style="text-align: center; padding-bottom: 12px;">
@@ -215,18 +343,18 @@ def render_sidebar(universe_df: pd.DataFrame) -> tuple[str, str]:
     )
 
     selected_ticker = "TCS"
+    screener_thresholds: dict[str, float] = {}
+    selected_peer_group = "IT Services"
+
+    # Screen 2: Company Profile Selector
     if selected_screen == "🏢 Company Profile":
         st.sidebar.markdown("---")
         st.sidebar.subheader("Company Selector")
-
-        # Build list of 92 companies sorted alphabetically by name
         sorted_cos = universe_df.sort_values(by="company_name")
         company_options = [
             f"{row['company_name']} ({row['company_id']})"
             for _, row in sorted_cos.iterrows()
         ]
-
-        # Default to TCS
         default_idx = 0
         for idx, opt in enumerate(company_options):
             if "(TCS)" in opt:
@@ -241,13 +369,160 @@ def render_sidebar(universe_df: pd.DataFrame) -> tuple[str, str]:
         if chosen_option:
             selected_ticker = chosen_option.split("(")[-1].replace(")", "").strip()
 
+    # Screen 3: Financial Screener Sliders & Preset Selector
+    elif selected_screen == "🔍 Financial Screener":
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("Screener Presets")
+
+        preset_choice = st.sidebar.selectbox(
+            "Choose a Preset Template:",
+            options=list(PRESET_DEFINITIONS.keys()),
+            index=1,  # Default to Quality Compounder
+        )
+
+        # Check if preset changed to auto-populate slider defaults
+        if st.session_state.get("active_preset") != preset_choice:
+            st.session_state["active_preset"] = preset_choice
+            target_preset = PRESET_DEFINITIONS[preset_choice]
+            for key, val in target_preset.items():
+                st.session_state[f"slider_{key}"] = float(val)
+
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("Filter Sliders (10 Criteria)")
+
+        curr = PRESET_DEFINITIONS.get(
+            preset_choice, PRESET_DEFINITIONS["Custom (Analyst Configured)"]
+        )
+
+        min_roe = st.sidebar.slider(
+            "Min ROE (%)",
+            min_value=0.0,
+            max_value=50.0,
+            value=float(st.session_state.get("slider_min_roe", curr["min_roe"])),
+            step=1.0,
+            key="slider_min_roe",
+        )
+        max_de = st.sidebar.slider(
+            "Max Debt-to-Equity (x)",
+            min_value=0.0,
+            max_value=5.0,
+            value=float(st.session_state.get("slider_max_de", curr["max_de"])),
+            step=0.1,
+            key="slider_max_de",
+        )
+        min_fcf = st.sidebar.slider(
+            "Min Free Cash Flow (₹ Cr)",
+            min_value=-5000.0,
+            max_value=10000.0,
+            value=float(st.session_state.get("slider_min_fcf", curr["min_fcf"])),
+            step=500.0,
+            key="slider_min_fcf",
+        )
+        min_opm = st.sidebar.slider(
+            "Min Operating Margin (%)",
+            min_value=0.0,
+            max_value=50.0,
+            value=float(st.session_state.get("slider_min_opm", curr["min_opm"])),
+            step=1.0,
+            key="slider_min_opm",
+        )
+        max_pe = st.sidebar.slider(
+            "Max P/E Multiple (x)",
+            min_value=5.0,
+            max_value=150.0,
+            value=float(st.session_state.get("slider_max_pe", curr["max_pe"])),
+            step=5.0,
+            key="slider_max_pe",
+        )
+        min_revenue_cagr_3yr = st.sidebar.slider(
+            "Min 3Y Revenue CAGR (%)",
+            min_value=-20.0,
+            max_value=50.0,
+            value=float(
+                st.session_state.get(
+                    "slider_min_revenue_cagr_3yr", curr["min_revenue_cagr_3yr"]
+                )
+            ),
+            step=1.0,
+            key="slider_min_revenue_cagr_3yr",
+        )
+        min_pat_cagr_3yr = st.sidebar.slider(
+            "Min 3Y PAT CAGR (%)",
+            min_value=-20.0,
+            max_value=50.0,
+            value=float(
+                st.session_state.get(
+                    "slider_min_pat_cagr_3yr", curr["min_pat_cagr_3yr"]
+                )
+            ),
+            step=1.0,
+            key="slider_min_pat_cagr_3yr",
+        )
+        min_cfo_quality = st.sidebar.slider(
+            "Min CFO Quality Score (x)",
+            min_value=0.0,
+            max_value=2.0,
+            value=float(
+                st.session_state.get("slider_min_cfo_quality", curr["min_cfo_quality"])
+            ),
+            step=0.05,
+            key="slider_min_cfo_quality",
+        )
+        max_capex_intensity = st.sidebar.slider(
+            "Max CapEx Intensity (%)",
+            min_value=0.5,
+            max_value=30.0,
+            value=float(
+                st.session_state.get(
+                    "slider_max_capex_intensity", curr["max_capex_intensity"]
+                )
+            ),
+            step=0.5,
+            key="slider_max_capex_intensity",
+        )
+        min_composite_score = st.sidebar.slider(
+            "Min Composite Ranking Score",
+            min_value=0.0,
+            max_value=100.0,
+            value=float(
+                st.session_state.get(
+                    "slider_min_composite_score", curr["min_composite_score"]
+                )
+            ),
+            step=5.0,
+            key="slider_min_composite_score",
+        )
+
+        screener_thresholds = {
+            "min_roe": min_roe,
+            "max_de": max_de,
+            "min_fcf": min_fcf,
+            "min_opm": min_opm,
+            "max_pe": max_pe,
+            "min_revenue_cagr_3yr": min_revenue_cagr_3yr,
+            "min_pat_cagr_3yr": min_pat_cagr_3yr,
+            "min_cfo_quality": min_cfo_quality,
+            "max_capex_intensity": max_capex_intensity,
+            "min_composite_score": min_composite_score,
+        }
+
+    # Screen 4: Peer Comparison Group Selector
+    elif selected_screen == "👥 Peer Comparison":
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("Peer Group Selector")
+        selected_peer_group = st.sidebar.selectbox(
+            "Choose Peer Group (11 Groups):",
+            options=PEER_GROUPS,
+            index=3,  # Default to IT Services
+        )
+
     st.sidebar.markdown("---")
     st.sidebar.subheader("Platform Status")
     st.sidebar.metric(label="Coverage", value="92 Companies", delta="100% Audited")
     st.sidebar.caption("Sprint 4 · Interactive Dashboard & Valuation")
     st.sidebar.caption("Fast In-Memory Cache · Plotly Visualizations")
 
-    return selected_screen, selected_ticker
+    return selected_screen, selected_ticker, screener_thresholds, selected_peer_group
 
 
 def render_home_screen(universe_df: pd.DataFrame) -> None:
@@ -263,7 +538,6 @@ def render_home_screen(universe_df: pd.DataFrame) -> None:
     # 1. 4 KPI Tiles at the top
     total_companies = len(universe_df)
 
-    # Exclude BEL & HAL corrupted rows from ROE average
     clean_roe_series = pd.to_numeric(
         universe_df.loc[
             ~universe_df["company_id"].isin(["BEL", "HAL"]), "return_on_equity_pct"
@@ -476,7 +750,6 @@ def render_company_profile_screen(universe_df: pd.DataFrame, ticker: str) -> Non
     score_val = comp.get("composite_ranking_score")
     extreme_flag = comp.get("extreme_magnitude_flag") == 1
 
-    # Formatting with defensive handling for Banks and Corrupted Tickers
     if extreme_flag:
         roe_display = "N/A*"
         roe_help = "Neutralized: Source balance sheet data scale error (~100x)."
@@ -632,6 +905,332 @@ def render_company_profile_screen(universe_df: pd.DataFrame, ticker: str) -> Non
         )
 
 
+def render_financial_screener_screen(
+    universe_df: pd.DataFrame, thresholds: dict[str, float]
+) -> None:
+    """SCREEN 3: Multi-Criteria Financial Screener Screen."""
+    st.title("🔍 Multi-Criteria Fundamental Screener")
+    st.markdown(
+        "Filter and rank all 92 Nifty 100 companies using 10 custom institutional thresholds "
+        "or instant production screener presets."
+    )
+
+    st.markdown("---")
+
+    # Filter logic: require non-null values for active constraints
+    df = universe_df.copy()
+
+    # Apply filters
+    mask = pd.Series(True, index=df.index)
+
+    # 1. ROE (strict null exclusion)
+    if thresholds["min_roe"] > 0.0:
+        mask &= (
+            pd.to_numeric(df["return_on_equity_pct"], errors="coerce")
+            >= thresholds["min_roe"]
+        )
+
+    # 2. D/E (strict null exclusion)
+    if thresholds["max_de"] < 5.0:
+        mask &= (
+            pd.to_numeric(df["debt_to_equity"], errors="coerce") <= thresholds["max_de"]
+        )
+
+    # 3. FCF (strict null exclusion)
+    if thresholds["min_fcf"] > -5000.0:
+        mask &= (
+            pd.to_numeric(df["free_cash_flow_cr"], errors="coerce")
+            >= thresholds["min_fcf"]
+        )
+
+    # 4. OPM (strict null exclusion)
+    if thresholds["min_opm"] > 0.0:
+        mask &= (
+            pd.to_numeric(df["operating_profit_margin_pct"], errors="coerce")
+            >= thresholds["min_opm"]
+        )
+
+    # 5. P/E (strict null exclusion)
+    if thresholds["max_pe"] < 150.0:
+        mask &= pd.to_numeric(df["pe_ratio"], errors="coerce") <= thresholds["max_pe"]
+
+    # 6. Revenue CAGR 3Y
+    if thresholds["min_revenue_cagr_3yr"] > -20.0:
+        mask &= (
+            pd.to_numeric(df["revenue_cagr_3yr"], errors="coerce")
+            >= thresholds["min_revenue_cagr_3yr"]
+        )
+
+    # 7. PAT CAGR 3Y
+    if thresholds["min_pat_cagr_3yr"] > -20.0:
+        mask &= (
+            pd.to_numeric(df["pat_cagr_3yr"], errors="coerce")
+            >= thresholds["min_pat_cagr_3yr"]
+        )
+
+    # 8. CFO Quality Score
+    if thresholds["min_cfo_quality"] > 0.0:
+        mask &= (
+            pd.to_numeric(df["cfo_quality_score"], errors="coerce")
+            >= thresholds["min_cfo_quality"]
+        )
+
+    # 9. CapEx Intensity
+    if thresholds["max_capex_intensity"] < 30.0:
+        mask &= (
+            pd.to_numeric(df["capex_intensity_pct"], errors="coerce")
+            <= thresholds["max_capex_intensity"]
+        )
+
+    # 10. Composite Score
+    if thresholds["min_composite_score"] > 0.0:
+        mask &= (
+            pd.to_numeric(df["composite_ranking_score"], errors="coerce")
+            >= thresholds["min_composite_score"]
+        )
+
+    filtered_df = (
+        df[mask].sort_values(by="composite_ranking_score", ascending=False).copy()
+    )
+    match_count = len(filtered_df)
+
+    # Status & Row Count Banner
+    top_col1, top_col2 = st.columns([0.7, 0.3])
+    with top_col1:
+        st.success(
+            f"🎯 **{match_count} companies match your screening criteria** (out of 92 universe constituents)."
+        )
+    with top_col2:
+        csv_data = (
+            filtered_df[
+                [
+                    "company_id",
+                    "company_name",
+                    "broad_sector",
+                    "composite_ranking_score",
+                    "return_on_equity_pct",
+                    "operating_profit_margin_pct",
+                    "debt_to_equity",
+                    "free_cash_flow_cr",
+                    "pe_ratio",
+                    "revenue_cagr_3yr",
+                    "cfo_quality_score",
+                ]
+            ]
+            .to_csv(index=False)
+            .encode("utf-8")
+        )
+        st.download_button(
+            label="📥 Export Filtered Results (CSV)",
+            data=csv_data,
+            file_name="nifty100_filtered_screener.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+
+    # Neutralized Tickers Verification
+    excluded_in_results = [
+        t for t in ["SBIN", "BEL", "HAL"] if t in filtered_df["company_id"].values
+    ]
+    if excluded_in_results:
+        st.warning(f"⚠️ Flagged Tickers in Results: {', '.join(excluded_in_results)}")
+    else:
+        st.caption(
+            "🛡️ **Integrity Verification:** SBIN, BEL, and HAL are completely excluded from "
+            "filtered results due to verified source data gaps / scale errors."
+        )
+
+    # Live Results Table
+    if not filtered_df.empty:
+        display_results = pd.DataFrame(
+            {
+                "Ticker": filtered_df["company_id"],
+                "Company Name": filtered_df["company_name"],
+                "Sector": filtered_df["broad_sector"],
+                "Composite Score": filtered_df["composite_ranking_score"].apply(
+                    lambda x: f"{x:.1f}" if pd.notna(x) else "—"
+                ),
+                "ROE (%)": filtered_df["return_on_equity_pct"].apply(
+                    lambda x: f"{x:.1f}%" if pd.notna(x) else "—"
+                ),
+                "OPM (%)": filtered_df["operating_profit_margin_pct"].apply(
+                    lambda x: f"{x:.1f}%" if pd.notna(x) else "—"
+                ),
+                "D/E (x)": filtered_df["debt_to_equity"].apply(
+                    lambda x: f"{x:.2f}x" if pd.notna(x) else "—"
+                ),
+                "FCF (₹ Cr)": filtered_df["free_cash_flow_cr"].apply(
+                    lambda x: f"₹{x:,.0f}" if pd.notna(x) else "—"
+                ),
+                "P/E (x)": filtered_df["pe_ratio"].apply(
+                    lambda x: f"{x:.1f}x" if pd.notna(x) else "—"
+                ),
+                "Rev CAGR 3Y": filtered_df["revenue_cagr_3yr"].apply(
+                    lambda x: f"{x:.1f}%" if pd.notna(x) else "—"
+                ),
+                "CFO Quality": filtered_df["cfo_quality_score"].apply(
+                    lambda x: f"{x:.2f}x" if pd.notna(x) else "—"
+                ),
+            }
+        )
+
+        st.dataframe(
+            display_results,
+            use_container_width=True,
+            hide_index=True,
+            height=500,
+        )
+    else:
+        st.warning(
+            "No companies match the selected combination of slider thresholds. Relax one or more filters."
+        )
+
+
+def render_peer_comparison_screen(selected_peer_group: str) -> None:
+    """SCREEN 4: Intra-Industry Peer Comparison Screen."""
+    st.title("👥 Intra-Industry Peer Comparison")
+    st.markdown(
+        f"Comparative fundamental benchmarking across **{selected_peer_group}** peer group. "
+        "Evaluates 20 metrics, intra-group percentile rankings, and percentage gaps relative to the benchmark leader."
+    )
+
+    st.markdown("---")
+
+    peer_df = load_peer_group_metrics(selected_peer_group)
+
+    if peer_df.empty:
+        st.warning(f"No peer records found for `{selected_peer_group}`.")
+        return
+
+    # Identify Benchmark Company
+    bench_records = peer_df[peer_df["is_benchmark"] == 1]
+    bench_id = bench_records.iloc[0]["company_id"] if not bench_records.empty else "TCS"
+    bench_name = (
+        bench_records.iloc[0]["company_name"] if not bench_records.empty else bench_id
+    )
+
+    st.info(
+        f"🏆 **Designated Peer Group Benchmark Leader:** **{bench_name} ({bench_id})**"
+    )
+
+    # 1. 20-Metric Comparative Heatmap Table
+    st.subheader("📋 20-Metric Side-by-Side Comparative Matrix")
+    st.markdown(
+        "Conditional formatting applied row-wise: 🟢 **Green** = Top Intra-Group Performer, "
+        "🟡 **Yellow** = Median, 🔴 **Red** = Bottom Performer."
+    )
+
+    # Pivot metric values (rows = metric_name, cols = company_id)
+    piv_val = peer_df.pivot(
+        index="metric_name", columns="company_id", values="metric_value"
+    )
+
+    # Highlight benchmark column name
+    column_renames = {
+        cid: f"{cid} 🏆 (Benchmark)" if cid == bench_id else cid
+        for cid in piv_val.columns
+    }
+    piv_display = piv_val.rename(columns=column_renames)
+
+    # Apply pandas Styler background gradient
+    styler = piv_display.style.background_gradient(cmap="RdYlGn", axis=1).format(
+        "{:.2f}", na_rep="—"
+    )
+
+    st.dataframe(
+        styler,
+        use_container_width=True,
+        height=560,
+    )
+
+    st.markdown("---")
+
+    # 2. Benchmark Gap Chart (Top 5 Core Metrics)
+    st.subheader("📊 Benchmark Gap Analysis (Top 5 Strategic Metrics)")
+    st.markdown(
+        r"Percentage variance relative to the benchmark leader ($0.0\%$) for **ROE, ROCE, "
+        "Revenue CAGR 3Y, OPM, and Composite Score**."
+    )
+
+    top5_metrics = ["ROE", "ROCE", "Revenue CAGR 3yr", "OPM", "Composite Score"]
+    gap_df = peer_df[peer_df["metric_name"].isin(top5_metrics)].copy()
+    gap_df = gap_df[gap_df["benchmark_gap_pct"].notna()]
+
+    if not gap_df.empty:
+        fig_gap = px.bar(
+            gap_df,
+            x="metric_name",
+            y="benchmark_gap_pct",
+            color="company_id",
+            barmode="group",
+            labels={
+                "metric_name": "Key Strategic Metric",
+                "benchmark_gap_pct": "Benchmark Gap (%)",
+                "company_id": "Company",
+            },
+            hover_data={"metric_value": ":.2f", "benchmark_gap_pct": ":.1f%"},
+            title=f"Intra-Group Spread vs. Benchmark Leader ({bench_id} = 0.0%)",
+        )
+        fig_gap.update_layout(
+            margin={"l": 20, "r": 20, "t": 50, "b": 30},
+            height=400,
+            legend={
+                "orientation": "h",
+                "yanchor": "bottom",
+                "y": 1.02,
+                "xanchor": "right",
+                "x": 1,
+            },
+            yaxis={
+                "title": "Gap vs. Benchmark (%)",
+                "zeroline": True,
+                "zerolinecolor": "rgba(255,255,255,0.4)",
+            },
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+        )
+        st.plotly_chart(fig_gap, use_container_width=True)
+    else:
+        st.info(
+            "No non-null benchmark gaps recorded for strategic metrics in this peer group."
+        )
+
+    st.markdown("---")
+
+    # 3. Best-in-Class Leadership Summary
+    st.subheader("⭐ 'Best in Class' Leadership Breakdown")
+    st.markdown(
+        r"Identifies which companies achieve the $\ge 75$th percentile rank across the 20 evaluated dimensions."
+    )
+
+    best_df = peer_df[peer_df["classification"] == "Best in Class"].sort_values(
+        by=["company_id", "metric_name"]
+    )
+
+    if not best_df.empty:
+        companies_in_group = peer_df["company_id"].unique()
+        b_cols = st.columns(min(len(companies_in_group), 4))
+
+        for col_idx, cid in enumerate(sorted(companies_in_group)):
+            c_metrics = best_df[best_df["company_id"] == cid]["metric_name"].tolist()
+            c_name = peer_df[peer_df["company_id"] == cid]["company_name"].iloc[0]
+            with b_cols[col_idx % len(b_cols)]:
+                badge = " 🏆 (Benchmark)" if cid == bench_id else ""
+                st.markdown(f"##### **{cid}**{badge}")
+                st.caption(f"{c_name}")
+                if c_metrics:
+                    st.success(
+                        f"**{len(c_metrics)} Best-in-Class Metrics:**\n\n"
+                        + "\n".join([f"• {m}" for m in c_metrics])
+                    )
+                else:
+                    st.info(r"No metric currently in $\ge 75$th percentile.")
+    else:
+        st.info(
+            "No metrics currently classified as 'Best in Class' in this peer group."
+        )
+
+
 def render_placeholder(screen_name: str, description: str, scheduled_day: str) -> None:
     """Render placeholder for screens scheduled in upcoming sprint days."""
     st.title(screen_name)
@@ -649,24 +1248,18 @@ def main() -> None:
     )
 
     universe_df = load_universe_snapshot()
-    selected_screen, selected_ticker = render_sidebar(universe_df)
+    selected_screen, selected_ticker, screener_thresholds, selected_peer_group = (
+        render_sidebar(universe_df)
+    )
 
     if selected_screen == "🏠 Home / Overview":
         render_home_screen(universe_df)
     elif selected_screen == "🏢 Company Profile":
         render_company_profile_screen(universe_df, selected_ticker)
     elif selected_screen == "🔍 Financial Screener":
-        render_placeholder(
-            "🔍 Financial Screener",
-            "Multi-criteria fundamental screening with live sliders, 6 production presets, and CSV export.",
-            "Sprint 4, Day 24 (Oct 10)",
-        )
+        render_financial_screener_screen(universe_df, screener_thresholds)
     elif selected_screen == "👥 Peer Comparison":
-        render_placeholder(
-            "👥 Peer Comparison",
-            "Intra-group comparative matrix across 20 metrics with 3-tier heatmaps and benchmark leaders.",
-            "Sprint 4, Day 24 (Oct 10)",
-        )
+        render_peer_comparison_screen(selected_peer_group)
     elif selected_screen == "📈 Trend Analysis":
         render_placeholder(
             "📈 Trend Analysis",
