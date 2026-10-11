@@ -1,0 +1,93 @@
+company_id,company_name,broad_sector,pe_ratio,sector_median_pe,median_pe_5yr,valuation_flag,historical_valuation_flag,fcf_yield_pct
+GRASIM,Grasim Industries Ltd,Industrials,79.35,47.155,47.49,Caution (Overvalued),Premium to History,-7.063967310949983
+INDIGO,Interglobe Aviation Ltd,Consumer Discretionary,76.23,38.005,53.7,Caution (Overvalued),Premium to History,0.9056027172386589
+ABB,Abbott India Ltd,Industrials,75.58,47.155,60.485,Caution (Overvalued),In Line with History,0.07127809977975783
+DMART,Avenue Supermarts Ltd,Consumer Discretionary,72.53,38.005,45.655,Caution (Overvalued),Premium to History,0.00910553222430331
+HAL,Hindustan Aeronautics Ltd,Industrials,71.89,47.155,53.635,Caution (Overvalued),Premium to History,0.06861811283803056
+NHPC,NHPC Ltd,Energy,71.17,44.915,59.83,Caution (Overvalued),In Line with History,0.05573417784977254
+SBILIFE,SBI Life Insurance Company Ltd,Financials,69.98,34.24,54.025,Caution (Overvalued),Premium to History,-0.23688132542403253
+BAJFINANCE,Bajaj Finance Ltd,Financials,69.2,34.24,50.870000000000005,Caution (Overvalued),Premium to History,-3.2317922805711454
+SHRIRAMFIN,Shriram Finance Ltd,Financials,68.53,34.24,47.260000000000005,Caution (Overvalued),Premium to History,-3.608906905151208
+BPCL,Bharat Petroleum Corporation Ltd,Energy,68.15,44.915,30.585,Caution (Overvalued),Premium to History,5.422883218663305
+TATAMOTORS,Tata Motors Ltd,Consumer Discretionary,67.07,38.005,31.715000000000003,Caution (Overvalued),Premium to History,3.000651602734764
+IRCTC,Indian Railway Catering & Tourism Corporation Ltd,Consumer Discretionary,60.44,38.005,45.585,Caution (Overvalued),Premium to History,0.05299874823631171
+BOSCHLTD,Bosch Ltd,Consumer Discretionary,58.43,38.005,34.555,Caution (Overvalued),Premium to History,0.05908701218425355
+SBIN,State Bank of India,Financials,54.93,34.24,50.985,Caution (Overvalued),In Line with History,0.7563625783740417
+PIDILITIND,Pidilite Industries Ltd,Materials,36.12,55.62,37.114999999999995,Discount (Undervalued),In Line with History,0.588510137595519
+INFY,Infosys Ltd,Information Technology,35.99,63.63,34.31,Discount (Undervalued),In Line with History,1.808627454139422
+HINDUNILVR,Hindustan Unilever Ltd,Consumer Staples,34.51,50.95,21.805,Discount (Undervalued),Premium to History,1.8482736240750641
+COALINDIA,Coal India Ltd,Materials,34.27,55.62,33.22,Discount (Undervalued),In Line with History,2.9991751112119767
+GODREJCP,Godrej Consumer Products Ltd,Consumer Staples,33.59,50.95,37.19,Discount (Undervalued),In Line with History,-0.10280184353453976
+NAUKRI,Info Edge (India) Ltd,Communication Services,32.88,48.33,34.885000000000005,Discount (Undervalued),In Line with History,-0.026604025891463663
+LT,Larsen & Toubro Ltd,Industrials,30.8,47.155,24.09,Discount (Undervalued),Premium to History,1.8179837675257147
+NTPC,NTPC Ltd,Energy,30.8,44.915,44.12,Discount (Undervalued),Discount to History,0.9521678733206076
+BHEL,Bharat Heavy Electricals Limited,Industrials,29.8,47.155,35.98,Discount (Undervalued),Discount to History,-0.4410671269170658
+IOC,Indian Oil Corporation,Energy,28.61,44.915,49.11,Discount (Undervalued),Discount to History,2.794810104975634
+SHREECEM,Shree Cement Ltd,Materials,25.87,55.62,33.97,Discount (Undervalued),Discount to History,0.06115348347250073
+GAIL,GAIL (India) Ltd,Energy,25.84,44.915,28.259999999999998,Discount (Undervalued),In Line with History,0.28461990353382827
+JSWENERGY,JSW Energy Ltd,Energy,24.79,44.915,37.545,Discount (Undervalued),Discount to History,-1.7705336124937798
+ICICIPRULI,ICICI Prudential Life Insurance Company Ltd,Financials,20.83,34.24,44.31,Discount (Undervalued),Discount to History,0.006574879059013327
+MARUTI,Maruti Suzuki India Ltd,Consumer Discretionary,20.78,38.005,28.565,Discount (Undervalued),Discount to History,0.3282212496887102
+PNB,Punjab National Bank,Financials,19.29,34.24,20.58,Discount (Undervalued),In Line with History,-1.6126067787208855
+ONGC,Oil & Natural Gas Corpn Ltd,Energy,18.15,44.915,44.31,Discount (Undervalued),Discount to History,10.781545408672736
+BEL,Bharat Electronics Ltd,Industrials,17.89,47.155,56.305,Discount (Undervalued),Discount to History,-0.09337302073000636
+BANKBARODA,Bank of Baroda,Financials,16.89,34.24,51.62,Discount (Undervalued),Discount to History,-1.279081332956056
+CHOLAFIN,Cholamandalam Investment & Finance Company Ltd,Financials,16.79,34.24,28.409999999999997,Discount (Undervalued),Discount to History,-3.9650923712808046
+EICHERMOT,Eicher Motors Ltd,Consumer Discretionary,15.62,38.005,21.865000000000002,Discount (Undervalued),Discount to History,0.4001945575069012
+BAJAJFINSV,Bajaj Finserv Ltd,Financials,15.07,34.24,47.335,Discount (Undervalued),Discount to History,-4.180016339930263
+TATAPOWER,Tata Power Company Ltd,Energy,14.5,44.915,23.509999999999998,Discount (Undervalued),Discount to History,0.2166615750083587
+M&M,Mahindra & Mahindra Ltd,Consumer Discretionary,14.22,38.005,43.58,Discount (Undervalued),Discount to History,-0.2694648852484086
+DRREDDY,Dr Reddys Laboratories Ltd,Healthcare,11.73,47.06,12.379999999999999,Discount (Undervalued),In Line with History,0.020845250072724943
+TITAN,Titan Company Ltd,Consumer Discretionary,10.13,38.005,27.58,Discount (Undervalued),Discount to History,0.0839572651499547
+IRFC,Indian Railway Finance Corporation Ltd,Financials,9.81,34.24,36.519999999999996,Discount (Undervalued),Discount to History,0.3019460457018293
+MOTHERSON,Samvardhana Motherson International Ltd,Consumer Discretionary,9.54,38.005,31.5,Discount (Undervalued),Discount to History,0.6329063689949501
+INDUSINDBK,IndusInd Bank Ltd,Financials,8.99,34.24,56.0,Discount (Undervalued),Discount to History,-0.9664534641259643
+TRENT,Trent Ltd,Consumer Discretionary,8.65,38.005,67.02,Discount (Undervalued),Discount to History,0.14720244295143942
+TCS,Tata Consultancy Services Ltd,Information Technology,78.69,63.63,52.365,Fair Value,Premium to History,10.934582772779395
+JINDALSTEL,Jindal Steel & Power Ltd,Materials,77.64,55.62,43.26,Fair Value,Premium to History,-0.5890244225007633
+ASIANPAINT,Asian Paints Indian Multi-National Paint and Coating Manufacturing Company,Materials,73.37,55.62,44.905,Fair Value,Premium to History,0.16720543083991699
+DIVISLAB,Divis Laboratories Ltd,Healthcare,69.95,47.06,43.625,Fair Value,Premium to History,0.061423058204904804
+JSWSTEEL,JSW Steel Ltd,Materials,69.27,55.62,35.885,Fair Value,Premium to History,-0.09143985264473488
+LTIM,LTIMindtree Ltd,Information Technology,64.52,63.63,60.765,Fair Value,In Line with History,0.13006228662120078
+POWERGRID,Power Grid Corporation of India Ltd,Energy,64.39,44.915,50.86,Fair Value,Premium to History,6.488733930345523
+BRITANNIA,Britannia Industries Ltd,Consumer Staples,63.91,50.95,36.775000000000006,Fair Value,Premium to History,0.9391963078561093
+BHARTIARTL,Bharti Airtel Ltd,Communication Services,63.78,48.33,65.33500000000001,Fair Value,In Line with History,7.345106122639473
+HCLTECH,HCL Technologies Ltd,Information Technology,63.63,63.63,62.05,Fair Value,In Line with History,3.8391317512701186
+CIPLA,Cipla Ltd,Healthcare,59.75,47.06,50.41,Fair Value,In Line with History,0.26193536813003726
+ADANIENT,Adani Enterprises Ltd,Industrials,58.87,47.155,57.5,Fair Value,In Line with History,-4.499064189327432
+ADANIENSOL,Adani Energy Solutions Ltd,Energy,58.5,44.915,59.075,Fair Value,In Line with History,0.3141880794689826
+RELIANCE,Reliance Industries Ltd,Energy,58.34,44.915,50.5,Fair Value,In Line with History,10.453145124463461
+TECHM,Tech Mahindra Ltd,Information Technology,57.4,63.63,49.445,Fair Value,In Line with History,0.16742270363873682
+ATGL,Adani Total Gas Ltd,Energy,56.96,44.915,31.800000000000004,Fair Value,Premium to History,0.013219567687445867
+HINDALCO,Hindalco Industries Ltd,Materials,56.45,55.62,51.02,Fair Value,In Line with History,1.355289512628809
+AMBUJACEM,Ambuja Cements Ltd,Materials,55.62,55.62,50.985,Fair Value,In Line with History,-0.25713841204302407
+NESTLEIND,Nestle India Ltd,Consumer Staples,54.96,50.95,50.585,Fair Value,In Line with History,0.17511285287273798
+TATACONSUM,Tata Consumer Products Ltd,Consumer Staples,54.79,50.95,37.655,Fair Value,Premium to History,0.007417056977403794
+HEROMOTOCO,Hero MotoCorp Ltd,Consumer Discretionary,53.86,38.005,60.275000000000006,Fair Value,In Line with History,0.19423862750722218
+LODHA,Macrotech Developers Ltd,Real Estate,51.95,49.105000000000004,52.13,Fair Value,In Line with History,-0.03595279056427525
+DABUR,Dabur India Ltd,Consumer Staples,50.95,50.95,41.055,Fair Value,In Line with History,1.8435351715372323
+HDFCLIFE,HDFC Life Insurance Company Ltd,Financials,50.59,34.24,52.28,Fair Value,In Line with History,-6.151706657367163
+HDFCBANK,HDFC Bank Ltd,Financials,49.42,34.24,31.840000000000003,Fair Value,Premium to History,4.412519521183551
+ICICIGI,ICICI Lombard General Insurance Company Ltd,Financials,49.0,34.24,52.4,Fair Value,In Line with History,0.03821387979852416
+TATASTEEL,Tata Steel Ltd,Materials,48.97,55.62,50.555,Fair Value,In Line with History,1.6385330523516455
+ADANIPORTS,Adani Ports & Special Economic Zone Ltd,Industrials,48.9,47.155,49.83,Fair Value,In Line with History,1.2211403642233938
+ITC,ITC Ltd,Consumer Staples,47.85,50.95,62.555,Fair Value,Discount to History,5.641008076014133
+APOLLOHOSP,Apollo Hospitals Chain of Indian private hospitals,Healthcare,47.72,47.06,38.055,Fair Value,Premium to History,0.0200984200212211
+TORNTPHARM,Torrent Pharmaceuticals Ltd,Healthcare,46.4,47.06,48.83,Fair Value,In Line with History,0.1660811237632738
+DLF,DLF Ltd,Real Estate,46.26,49.105000000000004,42.209999999999994,Fair Value,In Line with History,0.07309772065891328
+TVSMOTOR,TVS Motor Company Ltd,Consumer Discretionary,46.1,38.005,35.19,Fair Value,Premium to History,-0.8454886074536311
+HAVELLS,Havells India Ltd,Industrials,45.41,47.155,55.345,Fair Value,Discount to History,0.013285695877801929
+ADANIGREEN,Adani Green Energy Ltd,Energy,45.26,44.915,33.34,Fair Value,Premium to History,-2.61443014217979
+ADANIPOWER,Adani Power Ltd,Energy,44.57,44.915,48.4,Fair Value,In Line with History,1.2863439442922924
+AXISBANK,Axis Bank Ltd,Financials,38.14,34.24,47.88,Fair Value,Discount to History,-1.5340374357196316
+SUNPHARMA,Sun Pharmaceuticals Industries Ltd,Healthcare,37.9,47.06,31.24,Fair Value,In Line with History,0.8489189373413096
+BAJAJHLDNG,Bajaj Holdings & Investment Ltd,Financials,37.73,34.24,44.245,Fair Value,In Line with History,0.06702962960133939
+CANBK,Canara Bank,Financials,36.74,34.24,34.745000000000005,Fair Value,In Line with History,2.6783994097851984
+PFC,Power Finance Corporation Ltd,Financials,35.6,34.24,35.95,Fair Value,In Line with History,-5.031547988302576
+JIOFIN,Jio Financial Services Ltd,Financials,34.24,34.24,50.11,Fair Value,Discount to History,0.054430989669747215
+SIEMENS,Siemens Ltd,Industrials,33.32,47.155,37.225,Fair Value,In Line with History,
+KOTAKBANK,Kotak Mahindra Bank Ltd,Financials,32.9,34.24,46.535,Fair Value,Discount to History,1.5726708758275234
+RECLTD,REC Ltd,Financials,31.49,34.24,43.339999999999996,Fair Value,Discount to History,-20.40097504287343
+LICI,Life Insurance Corporation of India,Financials,30.67,34.24,34.485,Fair Value,In Line with History,0.46463827637828564
+BAJAJ-AUTO,Bajaj Auto Ltd,Consumer Discretionary,29.91,38.005,49.565,Fair Value,Discount to History,0.992020247858232
+ICICIBANK,ICICI Bank Ltd,Financials,25.76,34.24,50.57,Fair Value,Discount to History,0.9510909711578005

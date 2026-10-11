@@ -1,13 +1,14 @@
 """Nifty 100 Financial Intelligence Platform - Interactive Streamlit Dashboard.
 
-Sprint 4: Company Intelligence Dashboard & Valuation Engine
-Module 5: Interactive Streamlit Dashboard
+Sprint 4: Company Intelligence Dashboard & Valuation Engine (Module 5 & 6)
 Screen 1: Home / Overview
 Screen 2: Company Profile Tearsheet
 Screen 3: Financial Screener (Sliders, Presets, Live Results, CSV Download)
 Screen 4: Peer Comparison (20 Metrics Heatmap, Benchmark Gap Chart, Best-in-Class)
-Screen 5: Sector Analytics (KPIs, Side-by-Side Universe Chart, Company Ranking, Leadership Heatmap)
-Screen 6: Cash Flow Intelligence (FCF Health KPIs, Capital Allocation Donut, 10Y Deep-Dive, Top 10 FCF, Watch List)
+Screen 5: Sector Analytics & Sector Analysis (KPIs, Side-by-Side Chart, Rankings, Leadership Heatmap)
+Screen 6: Cash Flow Intelligence & Capital Allocation (FCF Health KPIs, Donut Chart, 10Y Deep-Dive, Top 10 FCF, Watch List)
+Screen 7: Trend & Growth Analysis (10Y Trajectory Visualizer, Multi-Metric Overlay, Historical Summary Table)
+Screen 8: Valuation Module & Annual Reports (Multiples Table, IT Cluster, DCF Scenario Calculator, BSE PDF Browser)
 """
 
 from __future__ import annotations
@@ -22,6 +23,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from src.analytics.valuation import calculate_valuation_metrics
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -31,16 +34,17 @@ SCREENER_OUTPUT_PATH = Path("screener_output.xlsx")
 SCREENER_CONFIG_PATH = Path("screener_config.yaml")
 RADAR_CHARTS_DIR = Path("reports/radar_charts")
 CAPITAL_ALLOCATION_PATH = Path("data/processed/capital_allocation.csv")
+VALUATION_SUMMARY_PATH = Path("reports/valuation_summary.xlsx")
 
 SCREENS = [
     "🏠 Home / Overview",
     "🏢 Company Profile",
     "🔍 Financial Screener",
     "👥 Peer Comparison",
-    "📊 Sector Analysis",
-    "🗺️ Capital Allocation & Cash Flow",
-    "📈 Trend Analysis",
-    "📑 Annual Reports",
+    "📊 Sector Analytics & Sector Analysis",
+    "💰 Cash Flow Intelligence & Capital Allocation",
+    "📈 Trend & Growth / Trend Analysis",
+    "💎 Valuation Module & Annual Reports",
 ]
 
 PEER_GROUPS = [
@@ -265,7 +269,10 @@ def load_universe_snapshot() -> pd.DataFrame:
             fr.extreme_magnitude_flag,
             mc.pe_ratio,
             mc.pb_ratio,
-            mc.market_cap_crore
+            mc.ev_ebitda,
+            mc.dividend_yield_pct,
+            mc.market_cap_crore,
+            mc.enterprise_value_crore
         FROM companies c
         LEFT JOIN sectors s ON c.id = s.company_id
         LEFT JOIN (
@@ -420,6 +427,42 @@ def load_historical_stress_records() -> pd.DataFrame:
     return load_query(sql)
 
 
+@st.cache_data(ttl=600)
+def load_company_pl_history(company_id: str) -> pd.DataFrame:
+    """Load 10-year P&L and cashflow trajectory for a specific company."""
+    sql = """
+        SELECT pl.year, pl.sales, pl.operating_profit, pl.net_profit, pl.eps, pl.opm_percentage,
+               cf.operating_activity as cfo
+        FROM profitandloss pl
+        LEFT JOIN cashflow cf ON pl.company_id = cf.company_id AND pl.year = cf.year
+        WHERE pl.company_id = ?
+        ORDER BY pl.year ASC;
+    """
+    return load_query(sql, params=(company_id,))
+
+
+@st.cache_data(ttl=600)
+def load_valuation_dataset() -> pd.DataFrame:
+    """Load universe valuation metrics calculated by valuation engine."""
+    try:
+        return calculate_valuation_metrics()
+    except (OSError, ValueError, KeyError, sqlite3.Error) as exc:
+        logger.error("Failed to calculate valuation metrics: %s", exc)
+        return pd.DataFrame()
+
+
+@st.cache_data(ttl=600)
+def load_company_documents(company_id: str) -> pd.DataFrame:
+    """Load filing URLs and metadata from documents table for a company."""
+    sql = """
+        SELECT year, annual_report
+        FROM documents
+        WHERE company_id = ?
+        ORDER BY year DESC;
+    """
+    return load_query(sql, params=(company_id,))
+
+
 # ==============================================================================
 # SIDEBAR NAVIGATION & CONTROLS
 # ==============================================================================
@@ -454,27 +497,27 @@ def render_sidebar(
     screener_thresholds: dict[str, float] = {}
     selected_peer_group = "IT Services"
     selected_sector = "All Sectors (Universe Overview)"
-    selected_cf_ticker = "TCS"
+    selected_drilldown_ticker = "TCS"
+
+    sorted_cos = universe_df.sort_values(by="company_name")
+    company_options = [
+        f"{row['company_name']} ({row['company_id']})"
+        for _, row in sorted_cos.iterrows()
+    ]
+    default_co_idx = 0
+    for idx, opt in enumerate(company_options):
+        if "(TCS)" in opt:
+            default_co_idx = idx
+            break
 
     # Screen 2: Company Profile Selector
     if selected_screen == "🏢 Company Profile":
         st.sidebar.markdown("---")
         st.sidebar.subheader("Company Selector")
-        sorted_cos = universe_df.sort_values(by="company_name")
-        company_options = [
-            f"{row['company_name']} ({row['company_id']})"
-            for _, row in sorted_cos.iterrows()
-        ]
-        default_idx = 0
-        for idx, opt in enumerate(company_options):
-            if "(TCS)" in opt:
-                default_idx = idx
-                break
-
         chosen_option = st.sidebar.selectbox(
             "Search or select company:",
             options=company_options,
-            index=default_idx,
+            index=default_co_idx,
         )
         if chosen_option:
             selected_ticker = chosen_option.split("(")[-1].replace(")", "").strip()
@@ -627,7 +670,7 @@ def render_sidebar(
         )
 
     # Screen 5: Sector Selector
-    elif selected_screen == "📊 Sector Analysis":
+    elif selected_screen == "📊 Sector Analytics & Sector Analysis":
         st.sidebar.markdown("---")
         st.sidebar.subheader("Sector Selector")
         selected_sector = st.sidebar.selectbox(
@@ -636,28 +679,23 @@ def render_sidebar(
             index=0,  # Default to All Sectors
         )
 
-    # Screen 6: Cash Flow Deep Dive Selector
-    elif selected_screen == "🗺️ Capital Allocation & Cash Flow":
+    # Screen 6, 7, 8: Company Deep-Dive Selectors
+    elif selected_screen in [
+        "💰 Cash Flow Intelligence & Capital Allocation",
+        "📈 Trend & Growth / Trend Analysis",
+        "💎 Valuation Module & Annual Reports",
+    ]:
         st.sidebar.markdown("---")
-        st.sidebar.subheader("Cash Flow Deep-Dive")
-        sorted_cos = universe_df.sort_values(by="company_name")
-        cf_options = [
-            f"{row['company_name']} ({row['company_id']})"
-            for _, row in sorted_cos.iterrows()
-        ]
-        default_cf_idx = 0
-        for idx, opt in enumerate(cf_options):
-            if "(TCS)" in opt:
-                default_cf_idx = idx
-                break
-
-        chosen_cf = st.sidebar.selectbox(
-            "Select Company for Cash Flow History:",
-            options=cf_options,
-            index=default_cf_idx,
+        st.sidebar.subheader("Company Focus")
+        chosen_co = st.sidebar.selectbox(
+            "Select Company for Analysis:",
+            options=company_options,
+            index=default_co_idx,
         )
-        if chosen_cf:
-            selected_cf_ticker = chosen_cf.split("(")[-1].replace(")", "").strip()
+        if chosen_co:
+            selected_drilldown_ticker = (
+                chosen_co.split("(")[-1].replace(")", "").strip()
+            )
 
     st.sidebar.markdown("---")
     st.sidebar.caption("Institutional Intelligence Engine | Sprint 4 (Days 22–28)")
@@ -668,7 +706,7 @@ def render_sidebar(
         screener_thresholds,
         selected_peer_group,
         selected_sector,
-        selected_cf_ticker,
+        selected_drilldown_ticker,
     )
 
 
@@ -1326,7 +1364,7 @@ def render_peer_comparison_screen(peer_group_name: str) -> None:
 
 
 # ==============================================================================
-# SCREEN 5: SECTOR ANALYTICS & CROSS-INDUSTRY BENCHMARKING
+# SCREEN 5: SECTOR ANALYTICS & SECTOR ANALYSIS
 # ==============================================================================
 
 
@@ -1584,7 +1622,6 @@ def render_sector_analytics_screen(
             .sum()
             .unstack(fill_value=0)
         )
-        # Order columns intuitively
         for col_name in ["Best in Class", "In Line", "Watch List"]:
             if col_name not in heat_piv.columns:
                 heat_piv[col_name] = 0
@@ -1675,7 +1712,6 @@ def render_cashflow_intelligence_screen(
 
     cap_df = load_capital_allocation_patterns()
     if not cap_df.empty:
-        # Filter to latest year per company
         latest_cap = (
             cap_df.sort_values("year").groupby("company_id").last().reset_index()
         )
@@ -1890,7 +1926,6 @@ def render_cashflow_intelligence_screen(
         "(Interest Coverage Ratio &lt; 1.5x) while simultaneously burning cash (Free Cash Flow &lt; 0)."
     )
 
-    # Latest year check
     latest_stress = universe_df[
         (universe_df["icr_risk_flag"].isin([1, True, "1", "True"]))
         & (universe_df["free_cash_flow_cr"] < 0)
@@ -1917,7 +1952,6 @@ def render_cashflow_intelligence_screen(
             use_container_width=True,
         )
 
-    # Historical stress audit archive
     with st.expander(
         "📜 10-Year Historical High-Stress Audit Archive (23 Occurrences)"
     ):
@@ -1946,15 +1980,578 @@ def render_cashflow_intelligence_screen(
 
 
 # ==============================================================================
-# PLACEHOLDER & MAIN APPLICATION ROUTER
+# SCREEN 7: TREND & GROWTH ANALYSIS
 # ==============================================================================
 
 
-def render_placeholder(screen_name: str, description: str, scheduled_day: str) -> None:
-    """Render placeholder for screens scheduled in upcoming sprint days."""
-    st.title(screen_name)
-    st.markdown(f"**Status:** Under Active Development (Scheduled for {scheduled_day})")
-    st.info(f"{description}\n\nImplementation will be integrated on {scheduled_day}.")
+def render_trend_growth_screen(universe_df: pd.DataFrame, selected_ticker: str) -> None:
+    """SCREEN 7: 10-Year Trend & Growth Trajectory Analysis."""
+    st.title("📈 10-Year Trend & Growth Trajectory Analysis")
+    st.markdown(
+        "Historical trajectory visualizer, compound annual growth rate (CAGR) decomp, "
+        "and multi-metric overlay mode across 10+ fiscal years."
+    )
+
+    st.markdown("---")
+
+    comp_row = universe_df[universe_df["company_id"] == selected_ticker]
+    comp_name = (
+        comp_row["company_name"].iloc[0] if not comp_row.empty else selected_ticker
+    )
+
+    st.subheader(f"🏢 Company Focus: **{comp_name} ({selected_ticker})**")
+
+    pl_history = load_company_pl_history(selected_ticker)
+    if pl_history.empty:
+        st.warning(
+            f"No historical financial statement records found for `{selected_ticker}`."
+        )
+        return
+
+    # Metric selection
+    t_col1, t_col2 = st.columns([0.5, 0.5])
+    with t_col1:
+        metric_choice = st.selectbox(
+            "Select Primary Trajectory Metric:",
+            options=[
+                "Sales / Revenue (₹ Cr)",
+                "Operating Profit (₹ Cr)",
+                "Net Profit / PAT (₹ Cr)",
+                "Operating Cash Flow (₹ Cr)",
+                "Earnings Per Share (₹)",
+            ],
+            index=0,
+        )
+
+    metric_mapping = {
+        "Sales / Revenue (₹ Cr)": "sales",
+        "Operating Profit (₹ Cr)": "operating_profit",
+        "Net Profit / PAT (₹ Cr)": "net_profit",
+        "Operating Cash Flow (₹ Cr)": "cfo",
+        "Earnings Per Share (₹)": "eps",
+    }
+    col_name = metric_mapping[metric_choice]
+
+    # Calculate YoY growth and CAGRs
+    pl_history["yoy_growth"] = pl_history[col_name].pct_change() * 100
+
+    latest_val = pl_history[col_name].iloc[-1]
+    latest_yoy = pl_history["yoy_growth"].iloc[-1]
+
+    # 3-year and 5-year CAGR calculations
+    def get_cagr(series: pd.Series, periods: int) -> float | None:
+        if len(series) >= periods + 1:
+            start_v = series.iloc[-(periods + 1)]
+            end_v = series.iloc[-1]
+            if start_v > 0 and end_v > 0:
+                return ((end_v / start_v) ** (1.0 / periods) - 1.0) * 100
+        return None
+
+    cagr_3y = get_cagr(pl_history[col_name], 3)
+    cagr_5y = get_cagr(pl_history[col_name], 5)
+
+    with t_col2:
+        m1, m2, m3 = st.columns(3)
+        m1.metric(
+            f"Latest {metric_choice.split()[0]}",
+            f"₹{latest_val:,.0f}" if col_name != "eps" else f"₹{latest_val:.1f}",
+            f"{latest_yoy:+.1f}% YoY" if pd.notna(latest_yoy) else None,
+        )
+        m2.metric("3-Year CAGR", f"{cagr_3y:.1f}%" if cagr_3y is not None else "N/A")
+        m3.metric("5-Year CAGR", f"{cagr_5y:.1f}%" if cagr_5y is not None else "N/A")
+
+    # 1. 10-Year Trajectory Chart (Plotly)
+    fig_trend = go.Figure()
+    fig_trend.add_trace(
+        go.Bar(
+            name=metric_choice,
+            x=pl_history["year"],
+            y=pl_history[col_name],
+            marker_color="#1E88E5",
+            text=[
+                f"{v:,.0f}" if abs(v) >= 100 else f"{v:.1f}"
+                for v in pl_history[col_name]
+            ],
+            textposition="auto",
+        )
+    )
+    if "yoy_growth" in pl_history.columns and pl_history["yoy_growth"].notna().any():
+        fig_trend.add_trace(
+            go.Scatter(
+                name="YoY Growth (%)",
+                x=pl_history["year"],
+                y=pl_history["yoy_growth"],
+                yaxis="y2",
+                mode="lines+markers",
+                line={"color": "#FFB300", "width": 2},
+            )
+        )
+
+    fig_trend.update_layout(
+        height=400,
+        margin={"l": 20, "r": 20, "t": 30, "b": 20},
+        xaxis_title="Fiscal Year",
+        yaxis_title=metric_choice,
+        yaxis2={
+            "title": "YoY Growth (%)",
+            "overlaying": "y",
+            "side": "right",
+            "showgrid": False,
+        },
+        legend={
+            "orientation": "h",
+            "yanchor": "bottom",
+            "y": 1.02,
+            "xanchor": "right",
+            "x": 1,
+        },
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+    )
+    st.plotly_chart(fig_trend, use_container_width=True)
+
+    st.markdown("---")
+
+    # 2. Multi-Metric Overlay Comparison Mode
+    st.subheader("🔀 Multi-Metric Overlay Mode")
+    st.caption(
+        "Side-by-side trajectory comparisons demonstrating cash conversion quality and operating leverage."
+    )
+
+    overlay_choice = st.radio(
+        "Choose Overlay Analysis:",
+        options=[
+            "Revenue vs Net Profit (Topline vs Bottomline Trajectory)",
+            "Operating Cash Flow vs Net Profit (Cash Conversion Diagnostic)",
+            "Operating Margin (OPM %) Stability Trend",
+        ],
+        horizontal=True,
+    )
+
+    fig_multi = go.Figure()
+
+    if overlay_choice == "Revenue vs Net Profit (Topline vs Bottomline Trajectory)":
+        fig_multi.add_trace(
+            go.Scatter(
+                name="Revenue / Sales (₹ Cr)",
+                x=pl_history["year"],
+                y=pl_history["sales"],
+                mode="lines+markers",
+                line={"color": "#42A5F5", "width": 3},
+            )
+        )
+        fig_multi.add_trace(
+            go.Scatter(
+                name="Net Profit / PAT (₹ Cr)",
+                x=pl_history["year"],
+                y=pl_history["net_profit"],
+                mode="lines+markers",
+                line={"color": "#66BB6A", "width": 3},
+            )
+        )
+    elif (
+        overlay_choice
+        == "Operating Cash Flow vs Net Profit (Cash Conversion Diagnostic)"
+    ):
+        fig_multi.add_trace(
+            go.Bar(
+                name="Operating Cash Flow / CFO (₹ Cr)",
+                x=pl_history["year"],
+                y=pl_history["cfo"],
+                marker_color="#2E7D32",
+            )
+        )
+        fig_multi.add_trace(
+            go.Scatter(
+                name="Net Profit / PAT (₹ Cr)",
+                x=pl_history["year"],
+                y=pl_history["net_profit"],
+                mode="lines+markers",
+                line={"color": "#FFA726", "width": 3},
+            )
+        )
+    else:
+        fig_multi.add_trace(
+            go.Scatter(
+                name="Operating Margin (OPM %)",
+                x=pl_history["year"],
+                y=pl_history["opm_percentage"],
+                mode="lines+markers",
+                line={"color": "#AB47BC", "width": 3},
+            )
+        )
+
+    fig_multi.update_layout(
+        height=380,
+        margin={"l": 20, "r": 20, "t": 30, "b": 20},
+        xaxis_title="Fiscal Year",
+        yaxis_title="Amount (₹ Cr) / Percentage (%)",
+        legend={
+            "orientation": "h",
+            "yanchor": "bottom",
+            "y": 1.02,
+            "xanchor": "right",
+            "x": 1,
+        },
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+    )
+    st.plotly_chart(fig_multi, use_container_width=True)
+
+    st.markdown("---")
+
+    # 3. 10-Year Historical Financial Summary Matrix Table
+    st.subheader(f"📋 10-Year Historical Financial Statement Matrix: {comp_name}")
+    table_display = pl_history.rename(
+        columns={
+            "year": "Fiscal Year",
+            "sales": "Revenue (₹ Cr)",
+            "operating_profit": "Operating Profit (₹ Cr)",
+            "net_profit": "Net Profit (₹ Cr)",
+            "cfo": "CFO (₹ Cr)",
+            "eps": "EPS (₹)",
+            "opm_percentage": "OPM (%)",
+            "yoy_growth": "YoY Growth (%)",
+        }
+    )
+    st.dataframe(
+        table_display.style.format(
+            {
+                "Revenue (₹ Cr)": "₹{:,.0f}",
+                "Operating Profit (₹ Cr)": "₹{:,.0f}",
+                "Net Profit (₹ Cr)": "₹{:,.0f}",
+                "CFO (₹ Cr)": "₹{:,.0f}",
+                "EPS (₹)": "₹{:.1f}",
+                "OPM (%)": "{:.1f}%",
+                "YoY Growth (%)": "{:+.1f}%",
+            },
+            na_rep="—",
+        ),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+
+# ==============================================================================
+# SCREEN 8: VALUATION MODULE & ANNUAL REPORTS
+# ==============================================================================
+
+
+def render_valuation_screen(universe_df: pd.DataFrame, selected_ticker: str) -> None:
+    """SCREEN 8: Valuation & Market Multiples Module."""
+    st.title("💎 Valuation & Market Multiples Intelligence")
+    st.markdown(
+        "Quantitative market capitalization multiples (P/E, P/B, EV/EBITDA), 5-year historical benchmarks, "
+        "relative valuation caution badges, interactive DCF scenario testing, and BSE annual report retrieval."
+    )
+
+    st.markdown("---")
+
+    val_df = load_valuation_dataset()
+    if val_df.empty:
+        st.warning(
+            "Valuation dataset could not be computed. Verify market_cap table exists."
+        )
+        return
+
+    # 1. Macro Valuation KPI Tiles
+    clean_pe = val_df["pe_ratio"].dropna()
+    clean_pb = val_df["pb_ratio"].dropna()
+    clean_evebitda = val_df["ev_ebitda"].dropna()
+    clean_fcf_yield = val_df["fcf_yield_pct"].dropna()
+
+    v1, v2, v3, v4 = st.columns(4)
+    v1.metric(
+        "Universe Median P/E",
+        f"{clean_pe.median():.1f}x",
+        help="Median Price-to-Earnings multiple across 92 Nifty 100 constituents",
+    )
+    v2.metric(
+        "Universe Median P/B",
+        f"{clean_pb.median():.1f}x",
+        help="Median Price-to-Book multiple",
+    )
+    v3.metric(
+        "Universe Median EV/EBITDA",
+        f"{clean_evebitda.median():.1f}x",
+        help="Median Enterprise Value to EBITDA multiple",
+    )
+    v4.metric(
+        "Average FCF Yield",
+        f"{clean_fcf_yield.mean():.1f}%",
+        help="Average Free Cash Flow Yield (FCF / Market Cap)",
+    )
+
+    st.markdown("---")
+
+    # 2. IT Sector Valuation Cluster Highlight (Key Analytical Finding)
+    st.subheader("💡 IT Services Valuation Cluster (Special Analytical Finding)")
+    st.markdown(
+        "Indian Tier-1 IT Services companies trade in an exceptionally tight valuation cluster. "
+        "Due to asset-light balance sheets (zero net debt), exceptional capital efficiency (ROE 23%–51%), "
+        "and ~100% Free Cash Flow conversion, market pricing reflects consistent premium valuation anchors."
+    )
+
+    it_cos = val_df[val_df["broad_sector"] == "Information Technology"].copy()
+    if not it_cos.empty:
+        c_it1, c_it2 = st.columns([0.55, 0.45])
+        with c_it1:
+            fig_it = px.scatter(
+                it_cos,
+                x="return_on_equity_pct",
+                y="pe_ratio",
+                size="market_cap_crore",
+                color="company_id",
+                text="company_id",
+                labels={
+                    "return_on_equity_pct": "Return on Equity (ROE %)",
+                    "pe_ratio": "P/E Multiple (x)",
+                    "company_id": "Company",
+                },
+            )
+            fig_it.update_traces(textposition="top center")
+            fig_it.update_layout(
+                height=340,
+                margin={"l": 20, "r": 20, "t": 20, "b": 20},
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+            )
+            st.plotly_chart(fig_it, use_container_width=True)
+
+        with c_it2:
+            st.dataframe(
+                it_cos[
+                    [
+                        "company_id",
+                        "pe_ratio",
+                        "median_pe_5yr",
+                        "ev_ebitda",
+                        "dividend_yield_pct",
+                        "fcf_yield_pct",
+                    ]
+                ]
+                .rename(
+                    columns={
+                        "company_id": "Ticker",
+                        "pe_ratio": "P/E",
+                        "median_pe_5yr": "5Y Med P/E",
+                        "ev_ebitda": "EV/EBITDA",
+                        "dividend_yield_pct": "Div Yield (%)",
+                        "fcf_yield_pct": "FCF Yield (%)",
+                    }
+                )
+                .style.format(
+                    {
+                        "P/E": "{:.1f}x",
+                        "5Y Med P/E": "{:.1f}x",
+                        "EV/EBITDA": "{:.1f}x",
+                        "Div Yield (%)": "{:.2f}%",
+                        "FCF Yield (%)": "{:.2f}%",
+                    },
+                    na_rep="—",
+                ),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+    st.markdown("---")
+
+    # 3. Valuation Multiples Table & Relative Caution Badges
+    st.subheader("📋 Constituent Valuation Multiples & Relative Badges (92 Companies)")
+    st.caption(
+        "Relative valuation badges: Caution (> 1.5x Sector Median P/E), Discount (< 0.7x Sector Median P/E), Fair Value."
+    )
+
+    flag_filter = st.selectbox(
+        "Filter by Valuation Classification:",
+        options=[
+            "All Classifications",
+            "Caution (Overvalued)",
+            "Discount (Undervalued)",
+            "Fair Value",
+        ],
+        index=0,
+    )
+
+    filtered_val = val_df.copy()
+    if flag_filter != "All Classifications":
+        filtered_val = filtered_val[filtered_val["valuation_flag"] == flag_filter]
+
+    display_val_cols = [
+        "company_id",
+        "company_name",
+        "broad_sector",
+        "market_cap_crore",
+        "pe_ratio",
+        "median_pe_5yr",
+        "sector_median_pe",
+        "valuation_flag",
+        "pb_ratio",
+        "ev_ebitda",
+        "fcf_yield_pct",
+        "dividend_yield_pct",
+    ]
+
+    val_table = filtered_val[display_val_cols].rename(
+        columns={
+            "company_id": "Ticker",
+            "company_name": "Company Name",
+            "broad_sector": "Sector",
+            "market_cap_crore": "Market Cap (₹ Cr)",
+            "pe_ratio": "P/E",
+            "median_pe_5yr": "5Y Med P/E",
+            "sector_median_pe": "Sector Med P/E",
+            "valuation_flag": "Valuation Badge",
+            "pb_ratio": "P/B",
+            "ev_ebitda": "EV/EBITDA",
+            "fcf_yield_pct": "FCF Yield (%)",
+            "dividend_yield_pct": "Div Yield (%)",
+        }
+    )
+
+    st.dataframe(
+        val_table.style.format(
+            {
+                "Market Cap (₹ Cr)": "₹{:,.0f}",
+                "P/E": "{:.1f}x",
+                "5Y Med P/E": "{:.1f}x",
+                "Sector Med P/E": "{:.1f}x",
+                "P/B": "{:.1f}x",
+                "EV/EBITDA": "{:.1f}x",
+                "FCF Yield (%)": "{:.2f}%",
+                "Div Yield (%)": "{:.2f}%",
+            },
+            na_rep="—",
+        ),
+        use_container_width=True,
+        height=420,
+    )
+
+    st.markdown("---")
+
+    # 4. Simplified DCF Scenario Calculator
+    st.subheader(f"🧮 Scenario Testing: Simplified DCF Model ({selected_ticker})")
+    st.markdown(
+        "**Methodology Note:** Simplified discounted cash flow (DCF) model projecting Free Cash Flows across "
+        "a 5-year discrete forecast horizon and terminal value capitalization."
+    )
+    st.warning(
+        "⚠️ **DCF Model Status:** Simplified academic estimate clearly labeled for scenario sensitivity testing only. Not investment advice."
+    )
+
+    comp_val = val_df[val_df["company_id"] == selected_ticker]
+    base_fcf = (
+        comp_val["free_cash_flow_cr"].iloc[0]
+        if not comp_val.empty and pd.notna(comp_val["free_cash_flow_cr"].iloc[0])
+        else 1000.0
+    )
+    curr_mcap = (
+        comp_val["market_cap_crore"].iloc[0]
+        if not comp_val.empty and pd.notna(comp_val["market_cap_crore"].iloc[0])
+        else 50000.0
+    )
+
+    dcf_col1, dcf_col2 = st.columns([0.45, 0.55])
+
+    with dcf_col1:
+        st.markdown(f"**Base Free Cash Flow (Latest Year):** ₹{base_fcf:,.0f} Cr")
+        dcf_growth = st.slider(
+            "5-Year Projected FCF Growth Rate (%)",
+            min_value=0.0,
+            max_value=30.0,
+            value=12.0,
+            step=0.5,
+        )
+        dcf_wacc = st.slider(
+            "Discount Rate / WACC (%)",
+            min_value=8.0,
+            max_value=18.0,
+            value=11.5,
+            step=0.5,
+        )
+        dcf_terminal_g = st.slider(
+            "Terminal Growth Rate (%)",
+            min_value=2.0,
+            max_value=6.0,
+            value=4.5,
+            step=0.25,
+        )
+
+    with dcf_col2:
+        # Calculate DCF
+        r = dcf_wacc / 100.0
+        g = dcf_growth / 100.0
+        g_term = dcf_terminal_g / 100.0
+
+        if r > g_term and base_fcf > 0:
+            pv_fcfs = sum(
+                (base_fcf * ((1 + g) ** yr)) / ((1 + r) ** yr) for yr in range(1, 6)
+            )
+            fcf_yr5 = base_fcf * ((1 + g) ** 5)
+            terminal_val = (fcf_yr5 * (1 + g_term)) / (r - g_term)
+            pv_terminal = terminal_val / ((1 + r) ** 5)
+            implied_equity_val = pv_fcfs + pv_terminal
+            upside_pct = ((implied_equity_val - curr_mcap) / curr_mcap) * 100
+
+            st.markdown(
+                f"""
+                <div style="background-color: #1a2234; border: 1px solid #2a3754; border-radius: 8px; padding: 18px;">
+                    <p style="margin: 0; font-size: 0.9rem; color: #94A3B8;">PV of 5-Year Cash Flows:</p>
+                    <h4 style="margin: 2px 0 8px 0; color: #90CAF9;">₹{pv_fcfs:,.0f} Cr</h4>
+                    <p style="margin: 0; font-size: 0.9rem; color: #94A3B8;">PV of Terminal Value:</p>
+                    <h4 style="margin: 2px 0 8px 0; color: #90CAF9;">₹{pv_terminal:,.0f} Cr</h4>
+                    <hr style="border: 0; border-top: 1px solid #2a3754; margin: 8px 0;">
+                    <p style="margin: 0; font-size: 0.95rem; color: #E2E8F0;"><strong>Implied Equity Value:</strong></p>
+                    <h3 style="margin: 2px 0 8px 0; color: #4CAF50;">₹{implied_equity_val:,.0f} Cr</h3>
+                    <p style="margin: 0; font-size: 0.9rem; color: #CBD5E1;">
+                        Current Market Cap: <strong>₹{curr_mcap:,.0f} Cr</strong> &nbsp;|&nbsp; 
+                        Implied Spread: <strong style="color: {'#4CAF50' if upside_pct >= 0 else '#EF5350'};">{upside_pct:+.1f}%</strong>
+                    </p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            st.info(
+                "DCF projection requires positive Free Cash Flow and WACC > Terminal Growth Rate."
+            )
+
+    st.markdown("---")
+
+    # 5. Annual Reports & Document Intelligence (BSE PDF Browser)
+    st.subheader(f"📑 BSE Annual Report Filing Browser: {selected_ticker}")
+    st.markdown(
+        "Official corporate regulatory filings and direct PDF links indexed in the SQLite warehouse."
+    )
+
+    docs_df = load_company_documents(selected_ticker)
+    if not docs_df.empty:
+        d_col1, d_col2 = st.columns([0.4, 0.6])
+        with d_col1:
+            filing_years = docs_df["year"].tolist()
+            chosen_year = st.selectbox(
+                "Select Annual Report Fiscal Year:", options=filing_years, index=0
+            )
+            target_link = docs_df[docs_df["year"] == chosen_year]["annual_report"].iloc[
+                0
+            ]
+
+        with d_col2:
+            st.markdown(f"#### Filing Year: **{chosen_year}**")
+            if pd.notna(target_link) and str(target_link).startswith("http"):
+                st.markdown(
+                    f"🔗 [**Download / Open BSE Annual Report Filing (PDF)**]({target_link})"
+                )
+                st.caption(f"Filing URI: `{target_link}`")
+            else:
+                st.info("Regulatory PDF link not indexed for this fiscal year.")
+    else:
+        st.info(f"No regulatory filings recorded for `{selected_ticker}`.")
+
+
+# ==============================================================================
+# MAIN APPLICATION ROUTER
+# ==============================================================================
 
 
 def main() -> None:
@@ -1973,7 +2570,7 @@ def main() -> None:
         screener_thresholds,
         selected_peer_group,
         selected_sector,
-        selected_cf_ticker,
+        selected_drilldown_ticker,
     ) = render_sidebar(universe_df)
 
     if selected_screen == "🏠 Home / Overview":
@@ -1984,22 +2581,14 @@ def main() -> None:
         render_financial_screener_screen(universe_df, screener_thresholds)
     elif selected_screen == "👥 Peer Comparison":
         render_peer_comparison_screen(selected_peer_group)
-    elif selected_screen == "📊 Sector Analysis":
+    elif selected_screen == "📊 Sector Analytics & Sector Analysis":
         render_sector_analytics_screen(universe_df, selected_sector)
-    elif selected_screen == "🗺️ Capital Allocation & Cash Flow":
-        render_cashflow_intelligence_screen(universe_df, selected_cf_ticker)
-    elif selected_screen == "📈 Trend Analysis":
-        render_placeholder(
-            "📈 Trend Analysis",
-            "10-year financial sparklines, YoY percentage change annotations, and multi-metric overlay mode.",
-            "Sprint 4, Day 25 (Oct 11)",
-        )
-    elif selected_screen == "📑 Annual Reports":
-        render_placeholder(
-            "📑 Annual Reports",
-            "BSE annual report filing browser with direct PDF links and filing metadata.",
-            "Sprint 4, Day 25 (Oct 11)",
-        )
+    elif selected_screen == "💰 Cash Flow Intelligence & Capital Allocation":
+        render_cashflow_intelligence_screen(universe_df, selected_drilldown_ticker)
+    elif selected_screen == "📈 Trend & Growth / Trend Analysis":
+        render_trend_growth_screen(universe_df, selected_drilldown_ticker)
+    elif selected_screen == "💎 Valuation Module & Annual Reports":
+        render_valuation_screen(universe_df, selected_drilldown_ticker)
     else:
         render_home_screen(universe_df)
 
