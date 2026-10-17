@@ -1,0 +1,1868 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "N100 Financial Intelligence Platform API",
+    "description": "Production-grade RESTful service exposing 16 endpoints for institutional fundamental intelligence, ratio analytics, screener filtering, peer comparisons, and sector benchmarking across the Nifty 100 universe.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/companies": {
+      "get": {
+        "tags": [
+          "Companies"
+        ],
+        "summary": "List all 92 companies",
+        "description": "Returns all 92 companies with ticker id, name, broad sector, peer group, and composite score.",
+        "operationId": "get_companies_api_v1_companies_get",
+        "parameters": [
+          {
+            "name": "sector",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by broad sector",
+              "title": "Sector"
+            },
+            "description": "Filter by broad sector"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CompanySummary"
+                  },
+                  "title": "Response Get Companies Api V1 Companies Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{ticker}": {
+      "get": {
+        "tags": [
+          "Companies"
+        ],
+        "summary": "Get Company Profile",
+        "description": "Returns full profile metadata from companies table and latest annual financial ratios.",
+        "operationId": "get_company_profile_api_v1_companies__ticker__get",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticker"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyProfile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{ticker}/ratios": {
+      "get": {
+        "tags": [
+          "Companies"
+        ],
+        "summary": "Get Company Ratios History",
+        "description": "Returns all ratio rows across all years for a company.",
+        "operationId": "get_company_ratios_api_v1_companies__ticker__ratios_get",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticker"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyRatiosResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{ticker}/financials": {
+      "get": {
+        "tags": [
+          "Companies"
+        ],
+        "summary": "Get Company Financial Statements",
+        "description": "Returns multi-year historical P&L, Balance Sheet, and Cash Flow statements.",
+        "operationId": "get_company_financials_api_v1_companies__ticker__financials_get",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticker"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyFinancialsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{ticker}/peers": {
+      "get": {
+        "tags": [
+          "Companies"
+        ],
+        "summary": "Get Company Peer Percentiles & Radar Data",
+        "description": "Returns peer group members and percentile ranks for ROE, ROCE, OPM, Rev CAGR 3yr, and Composite Score.",
+        "operationId": "get_company_peers_api_v1_companies__ticker__peers_get",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticker"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyPeersResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screener": {
+      "get": {
+        "tags": [
+          "Screener"
+        ],
+        "summary": "Filter Universe (Screener Engine)",
+        "description": "Multi-criteria screener matching Sprint 3 engine results. Query params: min_roe, max_de, min_fcf, min_opm, max_pe.",
+        "operationId": "run_screener_query_api_v1_screener_get",
+        "parameters": [
+          {
+            "name": "min_roe",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum ROE (%)",
+              "title": "Min Roe"
+            },
+            "description": "Minimum ROE (%)"
+          },
+          {
+            "name": "max_de",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Maximum Debt-to-Equity ratio",
+              "title": "Max De"
+            },
+            "description": "Maximum Debt-to-Equity ratio"
+          },
+          {
+            "name": "min_fcf",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum Free Cash Flow (INR Cr)",
+              "title": "Min Fcf"
+            },
+            "description": "Minimum Free Cash Flow (INR Cr)"
+          },
+          {
+            "name": "min_opm",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum Operating Profit Margin (%)",
+              "title": "Min Opm"
+            },
+            "description": "Minimum Operating Profit Margin (%)"
+          },
+          {
+            "name": "max_pe",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Maximum Price-to-Earnings multiple",
+              "title": "Max Pe"
+            },
+            "description": "Maximum Price-to-Earnings multiple"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScreenerCompanyItem"
+                  },
+                  "title": "Response Run Screener Query Api V1 Screener Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screener/presets": {
+      "get": {
+        "tags": [
+          "Screener"
+        ],
+        "summary": "List All Screener Presets",
+        "description": "Returns all 6 pre-built institutional screener presets and their filtering thresholds.",
+        "operationId": "get_screener_presets_api_v1_screener_presets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScreenerPresetItem"
+                  },
+                  "type": "array",
+                  "title": "Response Get Screener Presets Api V1 Screener Presets Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/screener/presets/{preset_name}": {
+      "get": {
+        "tags": [
+          "Screener"
+        ],
+        "summary": "Run Screener Preset",
+        "description": "Executes a named preset (e.g. 'quality_compounder', 'value_pick') and returns matching companies.",
+        "operationId": "run_screener_preset_api_v1_screener_presets__preset_name__get",
+        "parameters": [
+          {
+            "name": "preset_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Preset Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScreenerCompanyItem"
+                  },
+                  "title": "Response Run Screener Preset Api V1 Screener Presets  Preset Name  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sectors": {
+      "get": {
+        "tags": [
+          "Market Data"
+        ],
+        "summary": "List All 11 Sectors",
+        "description": "Returns aggregate fundamentals (avg ROE, avg OPM, median D/E, median PE, total market cap) across all 11 sectors.",
+        "operationId": "get_all_sectors_api_v1_sectors_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SectorSummaryItem"
+                  },
+                  "type": "array",
+                  "title": "Response Get All Sectors Api V1 Sectors Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sectors/{sector_name}": {
+      "get": {
+        "tags": [
+          "Market Data"
+        ],
+        "summary": "Get Sector Details & Constituents",
+        "description": "Returns summary KPIs and constituent companies with latest ratios for a specific sector.",
+        "operationId": "get_sector_detail_api_v1_sectors__sector_name__get",
+        "parameters": [
+          {
+            "name": "sector_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sector Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectorDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/market/overview": {
+      "get": {
+        "tags": [
+          "Market Data"
+        ],
+        "summary": "Universe Market Overview KPIs",
+        "description": "Returns universe-wide benchmarks: avg ROE, median PE, count positive FCF, count D/E<1, and top 3 companies.",
+        "operationId": "get_market_overview_api_v1_market_overview_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketOverviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{ticker}/cashflow": {
+      "get": {
+        "tags": [
+          "Company Analytics"
+        ],
+        "summary": "Company Cash Flow Intelligence & 5Y Trend",
+        "description": "Returns capital allocation pattern, CFO quality score/label, and trailing 5-year cash flow trend.",
+        "operationId": "get_company_cashflow_api_v1_companies__ticker__cashflow_get",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticker"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyCashflowResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{ticker}/valuation": {
+      "get": {
+        "tags": [
+          "Company Analytics"
+        ],
+        "summary": "Company Valuation Multiples & DCF Model",
+        "description": "Returns current PE, PB, EV/EBITDA, DCF implied value and upside, and valuation status flag.",
+        "operationId": "get_company_valuation_api_v1_companies__ticker__valuation_get",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticker"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyValuationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/peers/{peer_group_name}": {
+      "get": {
+        "tags": [
+          "Peer Intelligence"
+        ],
+        "summary": "Full Peer Group Analysis (20 Metrics)",
+        "description": "Returns all constituent members of a peer group with percentile rankings across 20 financial metrics and leadership flags.",
+        "operationId": "get_peer_group_analysis_api_v1_peers__peer_group_name__get",
+        "parameters": [
+          {
+            "name": "peer_group_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Peer Group Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerGroupDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/tearsheet/{ticker}": {
+      "get": {
+        "tags": [
+          "Reporting & Documents"
+        ],
+        "summary": "Download Institutional Company Tearsheet PDF",
+        "description": "Streams the pre-generated 2-page institutional PDF tearsheet for the requested ticker.",
+        "operationId": "get_tearsheet_report_api_v1_reports_tearsheet__ticker__get",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticker"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/sector/{sector_name}": {
+      "get": {
+        "tags": [
+          "Reporting & Documents"
+        ],
+        "summary": "Download Institutional Sector Report PDF",
+        "description": "Streams the pre-generated comprehensive sector report PDF for the requested sector.",
+        "operationId": "get_sector_report_pdf_api_v1_reports_sector__sector_name__get",
+        "parameters": [
+          {
+            "name": "sector_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sector Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CashflowTrendItem": {
+        "properties": {
+          "year": {
+            "type": "string",
+            "title": "Year"
+          },
+          "cfo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cfo",
+            "description": "Cash from Operations (Operating Activity) in \u20b9 Cr"
+          },
+          "cfi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cfi",
+            "description": "Cash from Investing in \u20b9 Cr"
+          },
+          "cff": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cff",
+            "description": "Cash from Financing in \u20b9 Cr"
+          },
+          "fcf": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fcf",
+            "description": "Free Cash Flow (CFO + CFI) in \u20b9 Cr"
+          },
+          "net_cash_flow": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Cash Flow",
+            "description": "Net change in cash in \u20b9 Cr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "year"
+        ],
+        "title": "CashflowTrendItem"
+      },
+      "CompanyCashflowResponse": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "capital_allocation_pattern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capital Allocation Pattern",
+            "description": "Institutional 8-pattern classification"
+          },
+          "cfo_quality_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cfo Quality Label",
+            "description": "High Quality vs Accrual Warning"
+          },
+          "cfo_quality_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cfo Quality Score",
+            "description": "Trailing 5Y CFO/PAT Quality Score"
+          },
+          "fcf_trend_5yr": {
+            "items": {
+              "$ref": "#/components/schemas/CashflowTrendItem"
+            },
+            "type": "array",
+            "title": "Fcf Trend 5Yr",
+            "description": "Trailing 5 audited fiscal years"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "company_name"
+        ],
+        "title": "CompanyCashflowResponse"
+      },
+      "CompanyFinancialsResponse": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "profit_and_loss": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Profit And Loss"
+          },
+          "balance_sheet": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Balance Sheet"
+          },
+          "cash_flow": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Cash Flow"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "company_name",
+          "profit_and_loss",
+          "balance_sheet",
+          "cash_flow"
+        ],
+        "title": "CompanyFinancialsResponse"
+      },
+      "CompanyPeersResponse": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "peer_group": {
+            "type": "string",
+            "title": "Peer Group"
+          },
+          "peer_members": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Peer Members"
+          },
+          "percentile_ranks": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PeerMetricRank"
+            },
+            "type": "object",
+            "title": "Percentile Ranks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "company_name",
+          "peer_group",
+          "peer_members",
+          "percentile_ranks"
+        ],
+        "title": "CompanyPeersResponse"
+      },
+      "CompanyProfile": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "NSE ticker symbol"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name",
+            "description": "Full legal company name"
+          },
+          "company_logo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Logo",
+            "description": "Company logo URL"
+          },
+          "about_company": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "About Company",
+            "description": "Company overview / business description"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website",
+            "description": "Official company website"
+          },
+          "nse_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nse Profile",
+            "description": "NSE market profile URL"
+          },
+          "bse_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bse Profile",
+            "description": "BSE market profile URL"
+          },
+          "sector": {
+            "type": "string",
+            "title": "Sector",
+            "description": "Broad sector classification"
+          },
+          "sub_sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sub Sector",
+            "description": "Detailed sub-sector classification"
+          },
+          "peer_group": {
+            "type": "string",
+            "title": "Peer Group",
+            "description": "Peer group classification"
+          },
+          "composite_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Composite Score",
+            "description": "Composite ranking score"
+          },
+          "valuation_flag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valuation Flag",
+            "description": "Valuation status flag",
+            "default": "Fair Value"
+          },
+          "face_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Face Value",
+            "description": "Face value per share"
+          },
+          "book_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book Value",
+            "description": "Book value per share"
+          },
+          "latest_ratios": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Ratios",
+            "description": "Latest fiscal year financial ratios"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "company_name",
+          "sector",
+          "peer_group"
+        ],
+        "title": "CompanyProfile"
+      },
+      "CompanyRatiosResponse": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "total_years": {
+            "type": "integer",
+            "title": "Total Years"
+          },
+          "ratios": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Ratios"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "company_name",
+          "total_years",
+          "ratios"
+        ],
+        "title": "CompanyRatiosResponse"
+      },
+      "CompanySummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "NSE ticker symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Full legal company name"
+          },
+          "sector": {
+            "type": "string",
+            "title": "Sector",
+            "description": "Broad sector classification"
+          },
+          "peer_group": {
+            "type": "string",
+            "title": "Peer Group",
+            "description": "Peer comparison group"
+          },
+          "composite_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Composite Score",
+            "description": "Composite Financial Health Score (0-100)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "sector",
+          "peer_group"
+        ],
+        "title": "CompanySummary"
+      },
+      "CompanyValuationResponse": {
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "title": "Ticker"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "broad_sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broad Sector"
+          },
+          "market_cap_crore": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market Cap Crore"
+          },
+          "pe_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pe Ratio",
+            "description": "Current Price-to-Earnings ratio"
+          },
+          "median_pe_5yr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Pe 5Yr",
+            "description": "5-Year Historical Median P/E"
+          },
+          "pb_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pb Ratio",
+            "description": "Price-to-Book ratio"
+          },
+          "ev_ebitda": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ev Ebitda",
+            "description": "Enterprise Value to EBITDA multiple"
+          },
+          "dcf_implied_value_cr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dcf Implied Value Cr",
+            "description": "DCF implied equity value in \u20b9 Cr"
+          },
+          "dcf_upside_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dcf Upside Pct",
+            "description": "Implied DCF upside/downside percentage"
+          },
+          "valuation_flag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valuation Flag",
+            "description": "Valuation badge (Undervalued / Fair Value / Overvalued)"
+          },
+          "historical_valuation_flag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Historical Valuation Flag",
+            "description": "Valuation vs 5-year median"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticker",
+          "company_name"
+        ],
+        "title": "CompanyValuationResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "MarketOverviewResponse": {
+        "properties": {
+          "total_companies": {
+            "type": "integer",
+            "title": "Total Companies"
+          },
+          "avg_roe": {
+            "type": "number",
+            "title": "Avg Roe"
+          },
+          "median_pe": {
+            "type": "number",
+            "title": "Median Pe"
+          },
+          "count_positive_fcf": {
+            "type": "integer",
+            "title": "Count Positive Fcf"
+          },
+          "count_low_leverage": {
+            "type": "integer",
+            "title": "Count Low Leverage"
+          },
+          "top_companies": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Top Companies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_companies",
+          "avg_roe",
+          "median_pe",
+          "count_positive_fcf",
+          "count_low_leverage",
+          "top_companies"
+        ],
+        "title": "MarketOverviewResponse"
+      },
+      "PeerGroupDetailResponse": {
+        "properties": {
+          "peer_group_name": {
+            "type": "string",
+            "title": "Peer Group Name"
+          },
+          "total_members": {
+            "type": "integer",
+            "title": "Total Members"
+          },
+          "metrics_count": {
+            "type": "integer",
+            "title": "Metrics Count"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/PeerMemberDetail"
+            },
+            "type": "array",
+            "title": "Members"
+          }
+        },
+        "type": "object",
+        "required": [
+          "peer_group_name",
+          "total_members",
+          "metrics_count",
+          "members"
+        ],
+        "title": "PeerGroupDetailResponse"
+      },
+      "PeerMemberDetail": {
+        "properties": {
+          "company_id": {
+            "type": "string",
+            "title": "Company Id"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "best_in_class_count": {
+            "type": "integer",
+            "title": "Best In Class Count",
+            "default": 0
+          },
+          "watch_list_count": {
+            "type": "integer",
+            "title": "Watch List Count",
+            "default": 0
+          },
+          "in_line_count": {
+            "type": "integer",
+            "title": "In Line Count",
+            "default": 0
+          },
+          "composite_score_percentile": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Composite Score Percentile"
+          },
+          "composite_score_classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Composite Score Classification"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/PeerMetricDetail"
+            },
+            "type": "array",
+            "title": "Metrics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "company_id",
+          "company_name"
+        ],
+        "title": "PeerMemberDetail"
+      },
+      "PeerMetricDetail": {
+        "properties": {
+          "metric_name": {
+            "type": "string",
+            "title": "Metric Name"
+          },
+          "metric_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metric Value"
+          },
+          "percentile_rank": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentile Rank"
+          },
+          "classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification"
+          },
+          "benchmark_gap_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Benchmark Gap Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metric_name"
+        ],
+        "title": "PeerMetricDetail"
+      },
+      "PeerMetricRank": {
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "percentile": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentile"
+          },
+          "classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification",
+            "default": "In Line"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "percentile"
+        ],
+        "title": "PeerMetricRank"
+      },
+      "ScreenerCompanyItem": {
+        "properties": {
+          "company_id": {
+            "type": "string",
+            "title": "Company Id"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "broad_sector": {
+            "type": "string",
+            "title": "Broad Sector"
+          },
+          "roe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roe"
+          },
+          "roce": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roce"
+          },
+          "opm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opm"
+          },
+          "de": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "De"
+          },
+          "pe_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pe Ratio"
+          },
+          "fcf_cr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fcf Cr"
+          },
+          "revenue_cagr_3yr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Cagr 3Yr"
+          },
+          "composite_ranking_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Composite Ranking Score"
+          },
+          "valuation_flag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valuation Flag",
+            "default": "Fair Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "company_id",
+          "company_name",
+          "broad_sector"
+        ],
+        "title": "ScreenerCompanyItem"
+      },
+      "ScreenerPresetItem": {
+        "properties": {
+          "preset_key": {
+            "type": "string",
+            "title": "Preset Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "logic": {
+            "type": "string",
+            "title": "Logic"
+          },
+          "thresholds": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Thresholds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "preset_key",
+          "name",
+          "description",
+          "logic",
+          "thresholds"
+        ],
+        "title": "ScreenerPresetItem"
+      },
+      "SectorDetailResponse": {
+        "properties": {
+          "sector_name": {
+            "type": "string",
+            "title": "Sector Name"
+          },
+          "company_count": {
+            "type": "integer",
+            "title": "Company Count"
+          },
+          "avg_roe": {
+            "type": "number",
+            "title": "Avg Roe"
+          },
+          "avg_opm": {
+            "type": "number",
+            "title": "Avg Opm"
+          },
+          "median_de": {
+            "type": "number",
+            "title": "Median De"
+          },
+          "median_pe": {
+            "type": "number",
+            "title": "Median Pe"
+          },
+          "companies": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Companies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sector_name",
+          "company_count",
+          "avg_roe",
+          "avg_opm",
+          "median_de",
+          "median_pe",
+          "companies"
+        ],
+        "title": "SectorDetailResponse"
+      },
+      "SectorSummaryItem": {
+        "properties": {
+          "sector_name": {
+            "type": "string",
+            "title": "Sector Name"
+          },
+          "company_count": {
+            "type": "integer",
+            "title": "Company Count"
+          },
+          "avg_roe": {
+            "type": "number",
+            "title": "Avg Roe"
+          },
+          "avg_opm": {
+            "type": "number",
+            "title": "Avg Opm"
+          },
+          "median_de": {
+            "type": "number",
+            "title": "Median De"
+          },
+          "median_pe": {
+            "type": "number",
+            "title": "Median Pe"
+          },
+          "total_market_cap_cr": {
+            "type": "number",
+            "title": "Total Market Cap Cr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sector_name",
+          "company_count",
+          "avg_roe",
+          "avg_opm",
+          "median_de",
+          "median_pe",
+          "total_market_cap_cr"
+        ],
+        "title": "SectorSummaryItem"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

@@ -20,7 +20,7 @@ import pandas as pd
 import yaml
 from fastapi import FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger("n100_api")
@@ -163,6 +163,66 @@ class MarketOverviewResponse(BaseModel):
     count_positive_fcf: int
     count_low_leverage: int
     top_companies: list[dict[str, Any]]
+
+
+
+class CashflowTrendItem(BaseModel):
+    year: str
+    cfo: Optional[float] = Field(None, description="Cash from Operations (Operating Activity) in ₹ Cr")
+    cfi: Optional[float] = Field(None, description="Cash from Investing in ₹ Cr")
+    cff: Optional[float] = Field(None, description="Cash from Financing in ₹ Cr")
+    fcf: Optional[float] = Field(None, description="Free Cash Flow (CFO + CFI) in ₹ Cr")
+    net_cash_flow: Optional[float] = Field(None, description="Net change in cash in ₹ Cr")
+
+
+class CompanyCashflowResponse(BaseModel):
+    ticker: str
+    company_name: str
+    capital_allocation_pattern: Optional[str] = Field(None, description="Institutional 8-pattern classification")
+    cfo_quality_label: Optional[str] = Field(None, description="High Quality vs Accrual Warning")
+    cfo_quality_score: Optional[float] = Field(None, description="Trailing 5Y CFO/PAT Quality Score")
+    fcf_trend_5yr: list[CashflowTrendItem] = Field(default_factory=list, description="Trailing 5 audited fiscal years")
+
+
+class CompanyValuationResponse(BaseModel):
+    ticker: str
+    company_name: str
+    broad_sector: Optional[str] = None
+    market_cap_crore: Optional[float] = None
+    pe_ratio: Optional[float] = Field(None, description="Current Price-to-Earnings ratio")
+    median_pe_5yr: Optional[float] = Field(None, description="5-Year Historical Median P/E")
+    pb_ratio: Optional[float] = Field(None, description="Price-to-Book ratio")
+    ev_ebitda: Optional[float] = Field(None, description="Enterprise Value to EBITDA multiple")
+    dcf_implied_value_cr: Optional[float] = Field(None, description="DCF implied equity value in ₹ Cr")
+    dcf_upside_pct: Optional[float] = Field(None, description="Implied DCF upside/downside percentage")
+    valuation_flag: Optional[str] = Field(None, description="Valuation badge (Undervalued / Fair Value / Overvalued)")
+    historical_valuation_flag: Optional[str] = Field(None, description="Valuation vs 5-year median")
+
+
+class PeerMetricDetail(BaseModel):
+    metric_name: str
+    metric_value: Optional[float] = None
+    percentile_rank: Optional[float] = None
+    classification: Optional[str] = None
+    benchmark_gap_pct: Optional[float] = None
+
+
+class PeerMemberDetail(BaseModel):
+    company_id: str
+    company_name: str
+    best_in_class_count: int = 0
+    watch_list_count: int = 0
+    in_line_count: int = 0
+    composite_score_percentile: Optional[float] = None
+    composite_score_classification: Optional[str] = None
+    metrics: list[PeerMetricDetail] = Field(default_factory=list)
+
+
+class PeerGroupDetailResponse(BaseModel):
+    peer_group_name: str
+    total_members: int
+    metrics_count: int
+    members: list[PeerMemberDetail]
 
 
 # ==============================================================================
@@ -321,7 +381,7 @@ def load_universe_df_cached() -> pd.DataFrame:
 # ==============================================================================
 
 
-@app.get("/", tags=["Diagnostic"], summary="API Root Information")
+@app.get("/", tags=["Diagnostic"], summary="API Root Information", include_in_schema=False)
 def root_info() -> dict[str, Any]:
     return {
         "platform": "N100 Financial Intelligence Platform API",
@@ -333,8 +393,8 @@ def root_info() -> dict[str, Any]:
     }
 
 
-@app.get("/health", tags=["Diagnostic"], summary="System Health & Database Verification")
-@app.get("/api/v1/health", tags=["Diagnostic"], summary="System Health & Database Verification (v1)")
+@app.get("/health", tags=["Diagnostic"], summary="System Health & Database Verification", include_in_schema=False)
+@app.get("/api/v1/health", tags=["Diagnostic"], summary="System Health & Database Verification (v1)", include_in_schema=False)
 def health_check() -> JSONResponse:
     db_path = get_db_path()
     try:
@@ -367,6 +427,38 @@ def health_check() -> JSONResponse:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"status": "unhealthy", "error": str(exc)},
         )
+
+
+
+@functools.lru_cache(maxsize=1)
+def load_valuation_summary_cached() -> pd.DataFrame:
+    """Load pre-computed valuation summary table from reports/valuation_summary.xlsx."""
+    candidates = [
+        REPO_ROOT / "reports" / "valuation_summary.xlsx",
+        REPO_ROOT / "valuation_summary.xlsx",
+    ]
+    for p in candidates:
+        if p.exists():
+            try:
+                return pd.read_excel(p)
+            except Exception as exc:
+                logger.warning("Failed to load %s: %s", p, exc)
+    return pd.DataFrame()
+
+
+def compute_dcf_implied(fcf_base: Optional[float], mcap: Optional[float]) -> tuple[Optional[float], Optional[float]]:
+    """Compute 2-stage DCF implied enterprise/equity value and upside percentage."""
+    if fcf_base is not None and not pd.isna(fcf_base) and fcf_base > 0:
+        g = 0.12
+        r = 0.115
+        g_t = 0.045
+        pv_fcf = sum((fcf_base * ((1 + g) ** yr)) / ((1 + r) ** yr) for yr in range(1, 6))
+        term_val = (fcf_base * ((1 + g) ** 5) * (1 + g_t)) / (r - g_t)
+        pv_term = term_val / ((1 + r) ** 5)
+        implied_val = round(pv_fcf + pv_term, 2)
+        upside = round(((implied_val - mcap) / mcap) * 100.0, 2) if mcap and mcap > 0 else None
+        return implied_val, upside
+    return None, None
 
 
 # ==============================================================================
@@ -929,6 +1021,329 @@ def get_market_overview() -> MarketOverviewResponse:
         count_positive_fcf=pos_fcf,
         count_low_leverage=low_de,
         top_companies=top_cos,
+    )
+
+
+
+# ==============================================================================
+# GROUP 4: CASH FLOW & VALUATION ANALYTICS ENDPOINTS
+# ==============================================================================
+
+
+@app.get(
+    "/api/v1/companies/{ticker}/cashflow",
+    response_model=CompanyCashflowResponse,
+    tags=["Company Analytics"],
+    summary="Company Cash Flow Intelligence & 5Y Trend",
+    description="Returns capital allocation pattern, CFO quality score/label, and trailing 5-year cash flow trend.",
+)
+@app.get(
+    "/companies/{ticker}/cashflow",
+    response_model=CompanyCashflowResponse,
+    tags=["Company Analytics"],
+    summary="Company Cash Flow (alias)",
+    include_in_schema=False,
+)
+def get_company_cashflow(ticker: str) -> CompanyCashflowResponse:
+    clean_ticker = ticker.strip().upper()
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Verify company exists
+    co_row = cur.execute("SELECT id, company_name FROM companies WHERE UPPER(id) = ?", (clean_ticker,)).fetchone()
+    if not co_row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Company with ticker '{ticker}' not found in Nifty 100 universe.",
+        )
+    comp_name = co_row["company_name"]
+
+    # Fetch latest capital allocation pattern and CFO quality
+    pattern_row = cur.execute(
+        """
+        SELECT capital_allocation_pattern, cfo_quality_label, cfo_quality_score
+        FROM financial_ratios
+        WHERE UPPER(company_id) = ? AND (year LIKE '%-03' OR company_id = 'SIEMENS')
+        ORDER BY year DESC LIMIT 1
+        """,
+        (clean_ticker,),
+    ).fetchone()
+
+    pattern = pattern_row["capital_allocation_pattern"] if pattern_row else None
+    cfo_label = pattern_row["cfo_quality_label"] if pattern_row else None
+    cfo_score = float(pattern_row["cfo_quality_score"]) if pattern_row and pattern_row["cfo_quality_score"] is not None else None
+
+    # Fetch last 5 audited fiscal years from cashflow table
+    cf_rows = cur.execute(
+        """
+        SELECT year, operating_activity, investing_activity, financing_activity, net_cash_flow
+        FROM cashflow
+        WHERE UPPER(company_id) = ? AND (year LIKE '%-03' OR company_id = 'SIEMENS')
+        ORDER BY year DESC LIMIT 5
+        """,
+        (clean_ticker,),
+    ).fetchall()
+
+    trends: list[CashflowTrendItem] = []
+    for r in cf_rows:
+        cfo_val = float(r["operating_activity"]) if r["operating_activity"] is not None else None
+        cfi_val = float(r["investing_activity"]) if r["investing_activity"] is not None else None
+        cff_val = float(r["financing_activity"]) if r["financing_activity"] is not None else None
+        net_val = float(r["net_cash_flow"]) if r["net_cash_flow"] is not None else None
+        fcf_val = round(cfo_val + cfi_val, 2) if (cfo_val is not None and cfi_val is not None) else None
+
+        trends.append(
+            CashflowTrendItem(
+                year=r["year"],
+                cfo=cfo_val,
+                cfi=cfi_val,
+                cff=cff_val,
+                fcf=fcf_val,
+                net_cash_flow=net_val,
+            )
+        )
+
+    return CompanyCashflowResponse(
+        ticker=clean_ticker,
+        company_name=comp_name,
+        capital_allocation_pattern=pattern,
+        cfo_quality_label=cfo_label,
+        cfo_quality_score=cfo_score,
+        fcf_trend_5yr=trends,
+    )
+
+
+@app.get(
+    "/api/v1/companies/{ticker}/valuation",
+    response_model=CompanyValuationResponse,
+    tags=["Company Analytics"],
+    summary="Company Valuation Multiples & DCF Model",
+    description="Returns current PE, PB, EV/EBITDA, DCF implied value and upside, and valuation status flag.",
+)
+@app.get(
+    "/companies/{ticker}/valuation",
+    response_model=CompanyValuationResponse,
+    tags=["Company Analytics"],
+    summary="Company Valuation (alias)",
+    include_in_schema=False,
+)
+def get_company_valuation(ticker: str) -> CompanyValuationResponse:
+    clean_ticker = ticker.strip().upper()
+    val_df = load_valuation_summary_cached()
+
+    if val_df.empty:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Valuation summary dataset not available.",
+        )
+
+    matched = val_df[val_df["company_id"].str.upper() == clean_ticker]
+    if matched.empty:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Valuation metrics for ticker '{ticker}' not found.",
+        )
+
+    row = matched.iloc[0]
+    mcap = float(row["market_cap_crore"]) if pd.notna(row.get("market_cap_crore")) else None
+    fcf = float(row["free_cash_flow_cr"]) if pd.notna(row.get("free_cash_flow_cr")) else None
+    dcf_val, dcf_upside = compute_dcf_implied(fcf, mcap)
+
+    return CompanyValuationResponse(
+        ticker=clean_ticker,
+        company_name=str(row["company_name"]),
+        broad_sector=str(row.get("broad_sector", "")),
+        market_cap_crore=mcap,
+        pe_ratio=float(row["pe_ratio"]) if pd.notna(row.get("pe_ratio")) else None,
+        median_pe_5yr=float(row["median_pe_5yr"]) if pd.notna(row.get("median_pe_5yr")) else None,
+        pb_ratio=float(row["pb_ratio"]) if pd.notna(row.get("pb_ratio")) else None,
+        ev_ebitda=float(row["ev_ebitda"]) if pd.notna(row.get("ev_ebitda")) else None,
+        dcf_implied_value_cr=dcf_val,
+        dcf_upside_pct=dcf_upside,
+        valuation_flag=str(row.get("valuation_flag", "Fair Value")),
+        historical_valuation_flag=str(row.get("historical_valuation_flag", "Fair Value")),
+    )
+
+
+# ==============================================================================
+# GROUP 5: PEER GROUPS & INSTITUTIONAL REPORTS ENDPOINTS
+# ==============================================================================
+
+
+@app.get(
+    "/api/v1/peers/{peer_group_name}",
+    response_model=PeerGroupDetailResponse,
+    tags=["Peer Intelligence"],
+    summary="Full Peer Group Analysis (20 Metrics)",
+    description="Returns all constituent members of a peer group with percentile rankings across 20 financial metrics and leadership flags.",
+)
+@app.get(
+    "/peers/{peer_group_name}",
+    response_model=PeerGroupDetailResponse,
+    tags=["Peer Intelligence"],
+    summary="Peer Group Analysis (alias)",
+    include_in_schema=False,
+)
+def get_peer_group_analysis(peer_group_name: str) -> PeerGroupDetailResponse:
+    clean_query = peer_group_name.strip().lower().replace("_", " ").replace("-", " ")
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Get available peer groups
+    all_groups = [r["peer_group_name"] for r in cur.execute("SELECT DISTINCT peer_group_name FROM peer_percentiles").fetchall()]
+    matched_group = next((g for g in all_groups if g.lower() == clean_query), None)
+
+    # Alias handling (e.g. 'it' -> 'IT Services')
+    if not matched_group and clean_query in ["it", "it services", "information technology"]:
+        matched_group = "IT Services"
+
+    if not matched_group:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Peer group '{peer_group_name}' not found. Available peer groups: {sorted(all_groups)}",
+        )
+
+    # Fetch all records for this peer group
+    query = """
+    SELECT 
+        pp.company_id,
+        c.company_name,
+        pp.metric_name,
+        pp.metric_value,
+        pp.percentile_rank,
+        pp.classification,
+        pp.benchmark_gap_pct
+    FROM peer_percentiles pp
+    LEFT JOIN companies c ON pp.company_id = c.id
+    WHERE pp.peer_group_name = ?
+    ORDER BY pp.company_id, pp.metric_name
+    """
+    rows = cur.execute(query, (matched_group,)).fetchall()
+
+    members_map: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        cid = r["company_id"]
+        cname = r["company_name"] or cid
+        if cid not in members_map:
+            members_map[cid] = {
+                "company_id": cid,
+                "company_name": cname,
+                "best_in_class_count": 0,
+                "watch_list_count": 0,
+                "in_line_count": 0,
+                "composite_score_percentile": None,
+                "composite_score_classification": None,
+                "metrics": [],
+            }
+
+        classification = r["classification"]
+        if classification == "Best in Class":
+            members_map[cid]["best_in_class_count"] += 1
+        elif classification == "Watch List":
+            members_map[cid]["watch_list_count"] += 1
+        elif classification == "In Line":
+            members_map[cid]["in_line_count"] += 1
+
+        if r["metric_name"] == "Composite Score":
+            members_map[cid]["composite_score_percentile"] = float(r["percentile_rank"]) if r["percentile_rank"] is not None else None
+            members_map[cid]["composite_score_classification"] = classification
+
+        members_map[cid]["metrics"].append(
+            PeerMetricDetail(
+                metric_name=r["metric_name"],
+                metric_value=float(r["metric_value"]) if r["metric_value"] is not None else None,
+                percentile_rank=float(r["percentile_rank"]) if r["percentile_rank"] is not None else None,
+                classification=classification,
+                benchmark_gap_pct=float(r["benchmark_gap_pct"]) if r["benchmark_gap_pct"] is not None else None,
+            )
+        )
+
+    members_list = [PeerMemberDetail(**m) for m in members_map.values()]
+    members_list.sort(key=lambda x: x.best_in_class_count, reverse=True)
+
+    return PeerGroupDetailResponse(
+        peer_group_name=matched_group,
+        total_members=len(members_list),
+        metrics_count=20,
+        members=members_list,
+    )
+
+
+@app.get(
+    "/api/v1/reports/tearsheet/{ticker}",
+    tags=["Reporting & Documents"],
+    summary="Download Institutional Company Tearsheet PDF",
+    description="Streams the pre-generated 2-page institutional PDF tearsheet for the requested ticker.",
+    response_class=FileResponse,
+)
+@app.get(
+    "/reports/tearsheet/{ticker}",
+    tags=["Reporting & Documents"],
+    summary="Company Tearsheet (alias)",
+    response_class=FileResponse,
+    include_in_schema=False,
+)
+def get_tearsheet_report(ticker: str) -> FileResponse:
+    clean_ticker = ticker.strip().upper()
+    tearsheet_path = REPO_ROOT / "reports" / "tearsheets" / f"{clean_ticker}_tearsheet.pdf"
+
+    if not tearsheet_path.exists() or not tearsheet_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tearsheet PDF for ticker '{ticker}' not found at {tearsheet_path.name}.",
+        )
+
+    return FileResponse(
+        path=tearsheet_path,
+        media_type="application/pdf",
+        filename=f"{clean_ticker}_tearsheet.pdf",
+    )
+
+
+@app.get(
+    "/api/v1/reports/sector/{sector_name}",
+    tags=["Reporting & Documents"],
+    summary="Download Institutional Sector Report PDF",
+    description="Streams the pre-generated comprehensive sector report PDF for the requested sector.",
+    response_class=FileResponse,
+)
+@app.get(
+    "/reports/sector/{sector_name}",
+    tags=["Reporting & Documents"],
+    summary="Sector Report (alias)",
+    response_class=FileResponse,
+    include_in_schema=False,
+)
+def get_sector_report_pdf(sector_name: str) -> FileResponse:
+    clean_input = sector_name.strip().replace(" ", "_").replace("-", "_")
+    sector_dir = REPO_ROOT / "reports" / "sector_reports"
+
+    # Search for matching pdf file in sector_reports directory
+    matched_file: Optional[Path] = None
+    if sector_dir.exists():
+        for f in sector_dir.glob("*.pdf"):
+            base_name = f.stem.replace("_report", "").lower()
+            if base_name == clean_input.lower() or base_name == clean_input.lower().replace("_", ""):
+                matched_file = f
+                break
+
+    # Alias for IT
+    if not matched_file and clean_input.lower() in ["it", "it_services", "infotech"]:
+        cand = sector_dir / "Information_Technology_report.pdf"
+        if cand.exists():
+            matched_file = cand
+
+    if not matched_file or not matched_file.is_file():
+        available = sorted([f.stem.replace("_report", "") for f in sector_dir.glob("*.pdf")]) if sector_dir.exists() else []
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Sector report for '{sector_name}' not found. Available sector reports: {available}",
+        )
+
+    return FileResponse(
+        path=matched_file,
+        media_type="application/pdf",
+        filename=matched_file.name,
     )
 
 

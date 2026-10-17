@@ -9,6 +9,7 @@ data/raw/
 data/supporting/
 data/processed/*
 !data/processed/capital_allocation.csv
+!data/processed/cluster_labels.csv
 data/*.xlsx
 *.xlsx
 
