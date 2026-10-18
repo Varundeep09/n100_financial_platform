@@ -4,6 +4,7 @@ from datetime import date, datetime, timezone
 
 import numpy as np
 import pandas as pd
+
 from src.etl.loader import PARSE_ERROR, normalize_ticker, normalize_year
 
 # ---------------------------------------------------------------------------

@@ -15,6 +15,7 @@ import sqlite3
 
 import pandas as pd
 import pytest
+
 from src.analytics.ratios import (
     DB_PATH,
     FINANCIALS_SECTOR_COMPANIES,

@@ -241,3 +241,63 @@ def test_qa_acceptance_checklist_pdf_exists_and_size() -> None:
 
     pages = re.findall(rb"/Type\s*/Page[\s/>]", pdf_content)
     assert len(pages) >= 2, f"Expected at least 2 pages, got {len(pages)}"
+
+
+# ==============================================================================
+# SPRINT 6 DAY 40 INTEGRATION AUDIT TESTS (D-13 & MASTER DELIVERABLES)
+# ==============================================================================
+
+
+def test_qa_cashflow_intelligence_report_exists_and_valid() -> None:
+    """Verify cashflow_intelligence.xlsx (D-13) exists, > 50KB, and has expected sheets."""
+    cf_xlsx = REPORTS_DIR / "cashflow_intelligence.xlsx"
+    assert cf_xlsx.exists(), f"cashflow_intelligence.xlsx missing at {cf_xlsx}"
+    assert (
+        cf_xlsx.stat().st_size > 50_000
+    ), f"cashflow_intelligence.xlsx smaller than 50KB: {cf_xlsx.stat().st_size} bytes"
+
+    import openpyxl
+
+    wb = openpyxl.load_workbook(cf_xlsx, read_only=True)
+    expected_sheets = {"Latest Summary", "Historical KPIs", "Sector Patterns"}
+    assert expected_sheets.issubset(
+        set(wb.sheetnames)
+    ), f"Missing sheets in cashflow_intelligence.xlsx: {set(wb.sheetnames)}"
+    wb.close()
+
+
+def test_qa_all_23_deliverables_present_and_accounted() -> None:
+    """Verify all 23 specification deliverables D-01 through D-23 exist and are valid."""
+    deliverable_paths = [
+        REPO_ROOT / "db" / "nifty100.db",
+        REPORTS_DIR / "load_audit.csv",
+        REPORTS_DIR / "validation_failures.csv",
+        REPO_ROOT / "notebooks" / "exploratory_queries.sql",
+        REPO_ROOT / "data" / "processed" / "capital_allocation.csv",
+        REPORTS_DIR / "screener_output.xlsx",
+        REPO_ROOT / "screener_config.yaml",
+        REPORTS_DIR / "peer_comparison.xlsx",
+        REPORTS_DIR / "radar_charts",
+        REPO_ROOT / "src" / "dashboard" / "app.py",
+        REPORTS_DIR / "valuation_summary.xlsx",
+        REPORTS_DIR / "cashflow_intelligence.xlsx",
+        REPO_ROOT / "data" / "processed" / "pros_cons_generated.csv",
+        REPO_ROOT / "data" / "processed" / "analysis_parsed.csv",
+        REPORTS_DIR / "tearsheets",
+        REPORTS_DIR / "sector_reports",
+        REPORTS_DIR / "portfolio_summary.pdf",
+        REPO_ROOT / "data" / "processed" / "cluster_labels.csv",
+        REPO_ROOT / "src" / "api" / "main.py",
+        REPORTS_DIR / "pytest_report.html",
+        REPORTS_DIR / "analyst_guide.pdf",
+        REPORTS_DIR / "acceptance_checklist.pdf",
+    ]
+
+    for p in deliverable_paths:
+        assert p.exists(), f"Deliverable missing at: {p}"
+
+    # Also verify SQLite financial_ratios table row count (D-05)
+    conn = sqlite3.connect(DB_PATH)
+    count = conn.cursor().execute("SELECT COUNT(*) FROM financial_ratios").fetchone()[0]
+    conn.close()
+    assert count >= 1100, f"financial_ratios table has only {count} rows (< 1100)"

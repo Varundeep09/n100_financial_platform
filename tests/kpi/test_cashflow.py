@@ -11,6 +11,7 @@ Covers:
 """
 
 import pandas as pd
+
 from src.analytics.cashflow_kpis import (
     calculate_cashflow_kpis,
     classify_capital_allocation,

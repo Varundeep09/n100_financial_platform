@@ -11,6 +11,7 @@ import sqlite3
 
 import pandas as pd
 import pytest
+
 from src.analytics.peer import (
     calculate_peer_percentiles,
     populate_peer_percentiles,

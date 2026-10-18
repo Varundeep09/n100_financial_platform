@@ -11,6 +11,7 @@ import sqlite3
 from pathlib import Path
 
 import pytest
+
 from src.analytics.radar import generate_all_radar_charts
 from src.screener.engine import DEFAULT_DB_PATH
 

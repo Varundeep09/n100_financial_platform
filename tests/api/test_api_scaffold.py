@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+
 from src.api.main import app
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent

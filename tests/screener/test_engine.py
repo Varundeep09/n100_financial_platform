@@ -2,6 +2,7 @@
 
 import pandas as pd
 import pytest
+
 from src.screener.engine import (
     apply_trend_filter,
     filter_universe,

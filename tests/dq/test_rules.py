@@ -1,6 +1,7 @@
 """Unit tests for all 16 Data Quality (DQ) validation rules (Sprint 1, Day 3)."""
 
 import pandas as pd
+
 from src.etl.validator import (
     validate_dq01_company_pk_uniqueness,
     validate_dq02_annual_pk_uniqueness,

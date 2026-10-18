@@ -33,3 +33,9 @@ db/*.db
 !peer_comparison.xlsx
 !reports/peer_comparison.xlsx
 !reports/valuation_summary.xlsx
+!data/processed/pros_cons_generated.csv
+!data/processed/analysis_parsed.csv
+!data/processed/load_audit.csv
+!data/processed/validation_failures.csv
+!data/processed/exploratory_queries.sql
+!reports/cashflow_intelligence.xlsx

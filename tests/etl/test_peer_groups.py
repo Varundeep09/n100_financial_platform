@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+
 from db.loader import transform_peer_groups
 
 DB_PATH = Path("db/nifty100.db")
