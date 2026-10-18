@@ -6,12 +6,11 @@ HTTP 200 with valid schema, and non-zero row counts are verified for all core ta
 
 from __future__ import annotations
 
-import sqlite3
 from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
-
-from src.api.main import app, get_db_path
+from src.api.main import app
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DB_PATH = REPO_ROOT / "db" / "nifty100.db"
@@ -26,10 +25,14 @@ def client() -> TestClient:
 def test_health_endpoint_status_code_and_schema(client: TestClient) -> None:
     """Verify /health returns HTTP 200 with status=healthy and expected payload fields."""
     response = client.get("/health")
-    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+    assert (
+        response.status_code == 200
+    ), f"Expected 200, got {response.status_code}: {response.text}"
 
     data = response.json()
-    assert data.get("status") == "healthy", f"Expected status 'healthy', got: {data.get('status')}"
+    assert (
+        data.get("status") == "healthy"
+    ), f"Expected status 'healthy', got: {data.get('status')}"
     assert data.get("db_status") == "connected"
     assert "timestamp" in data
     assert "uptime_seconds" in data
@@ -64,8 +67,14 @@ def test_health_endpoint_table_counts(client: TestClient) -> None:
     ]
 
     for tbl in core_tables:
-        assert tbl in table_counts, f"Table {tbl} missing from db_row_counts: {table_counts.keys()}"
-        assert table_counts[tbl] > 0, f"Table {tbl} row count must be positive, got {table_counts[tbl]}"
+        assert (
+            tbl in table_counts
+        ), f"Table {tbl} missing from db_row_counts: {table_counts.keys()}"
+        assert (
+            table_counts[tbl] > 0
+        ), f"Table {tbl} row count must be positive, got {table_counts[tbl]}"
 
     # Specific company count check
-    assert table_counts["companies"] == 92, f"Expected 92 companies, got {table_counts['companies']}"
+    assert (
+        table_counts["companies"] == 92
+    ), f"Expected 92 companies, got {table_counts['companies']}"

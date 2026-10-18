@@ -14,7 +14,7 @@ import sqlite3
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 import yaml
@@ -63,25 +63,35 @@ class CompanySummary(BaseModel):
     name: str = Field(..., description="Full legal company name")
     sector: str = Field(..., description="Broad sector classification")
     peer_group: str = Field(..., description="Peer comparison group")
-    composite_score: Optional[float] = Field(None, description="Composite Financial Health Score (0-100)")
+    composite_score: float | None = Field(
+        None, description="Composite Financial Health Score (0-100)"
+    )
 
 
 class CompanyProfile(BaseModel):
     id: str = Field(..., description="NSE ticker symbol")
     company_name: str = Field(..., description="Full legal company name")
-    company_logo: Optional[str] = Field(None, description="Company logo URL")
-    about_company: Optional[str] = Field(None, description="Company overview / business description")
-    website: Optional[str] = Field(None, description="Official company website")
-    nse_profile: Optional[str] = Field(None, description="NSE market profile URL")
-    bse_profile: Optional[str] = Field(None, description="BSE market profile URL")
+    company_logo: str | None = Field(None, description="Company logo URL")
+    about_company: str | None = Field(
+        None, description="Company overview / business description"
+    )
+    website: str | None = Field(None, description="Official company website")
+    nse_profile: str | None = Field(None, description="NSE market profile URL")
+    bse_profile: str | None = Field(None, description="BSE market profile URL")
     sector: str = Field(..., description="Broad sector classification")
-    sub_sector: Optional[str] = Field(None, description="Detailed sub-sector classification")
+    sub_sector: str | None = Field(
+        None, description="Detailed sub-sector classification"
+    )
     peer_group: str = Field(..., description="Peer group classification")
-    composite_score: Optional[float] = Field(None, description="Composite ranking score")
-    valuation_flag: Optional[str] = Field("Fair Value", description="Valuation status flag")
-    face_value: Optional[float] = Field(None, description="Face value per share")
-    book_value: Optional[float] = Field(None, description="Book value per share")
-    latest_ratios: Optional[dict[str, Any]] = Field(default_factory=dict, description="Latest fiscal year financial ratios")
+    composite_score: float | None = Field(None, description="Composite ranking score")
+    valuation_flag: str | None = Field(
+        "Fair Value", description="Valuation status flag"
+    )
+    face_value: float | None = Field(None, description="Face value per share")
+    book_value: float | None = Field(None, description="Book value per share")
+    latest_ratios: dict[str, Any] | None = Field(
+        default_factory=dict, description="Latest fiscal year financial ratios"
+    )
 
 
 class CompanyRatiosResponse(BaseModel):
@@ -100,9 +110,9 @@ class CompanyFinancialsResponse(BaseModel):
 
 
 class PeerMetricRank(BaseModel):
-    value: Optional[float]
-    percentile: Optional[float]
-    classification: Optional[str] = "In Line"
+    value: float | None
+    percentile: float | None
+    classification: str | None = "In Line"
 
 
 class CompanyPeersResponse(BaseModel):
@@ -117,15 +127,15 @@ class ScreenerCompanyItem(BaseModel):
     company_id: str
     company_name: str
     broad_sector: str
-    roe: Optional[float] = None
-    roce: Optional[float] = None
-    opm: Optional[float] = None
-    de: Optional[float] = None
-    pe_ratio: Optional[float] = None
-    fcf_cr: Optional[float] = None
-    revenue_cagr_3yr: Optional[float] = None
-    composite_ranking_score: Optional[float] = None
-    valuation_flag: Optional[str] = "Fair Value"
+    roe: float | None = None
+    roce: float | None = None
+    opm: float | None = None
+    de: float | None = None
+    pe_ratio: float | None = None
+    fcf_cr: float | None = None
+    revenue_cagr_3yr: float | None = None
+    composite_ranking_score: float | None = None
+    valuation_flag: str | None = "Fair Value"
 
 
 class ScreenerPresetItem(BaseModel):
@@ -165,46 +175,67 @@ class MarketOverviewResponse(BaseModel):
     top_companies: list[dict[str, Any]]
 
 
-
 class CashflowTrendItem(BaseModel):
     year: str
-    cfo: Optional[float] = Field(None, description="Cash from Operations (Operating Activity) in ₹ Cr")
-    cfi: Optional[float] = Field(None, description="Cash from Investing in ₹ Cr")
-    cff: Optional[float] = Field(None, description="Cash from Financing in ₹ Cr")
-    fcf: Optional[float] = Field(None, description="Free Cash Flow (CFO + CFI) in ₹ Cr")
-    net_cash_flow: Optional[float] = Field(None, description="Net change in cash in ₹ Cr")
+    cfo: float | None = Field(
+        None, description="Cash from Operations (Operating Activity) in ₹ Cr"
+    )
+    cfi: float | None = Field(None, description="Cash from Investing in ₹ Cr")
+    cff: float | None = Field(None, description="Cash from Financing in ₹ Cr")
+    fcf: float | None = Field(None, description="Free Cash Flow (CFO + CFI) in ₹ Cr")
+    net_cash_flow: float | None = Field(None, description="Net change in cash in ₹ Cr")
 
 
 class CompanyCashflowResponse(BaseModel):
     ticker: str
     company_name: str
-    capital_allocation_pattern: Optional[str] = Field(None, description="Institutional 8-pattern classification")
-    cfo_quality_label: Optional[str] = Field(None, description="High Quality vs Accrual Warning")
-    cfo_quality_score: Optional[float] = Field(None, description="Trailing 5Y CFO/PAT Quality Score")
-    fcf_trend_5yr: list[CashflowTrendItem] = Field(default_factory=list, description="Trailing 5 audited fiscal years")
+    capital_allocation_pattern: str | None = Field(
+        None, description="Institutional 8-pattern classification"
+    )
+    cfo_quality_label: str | None = Field(
+        None, description="High Quality vs Accrual Warning"
+    )
+    cfo_quality_score: float | None = Field(
+        None, description="Trailing 5Y CFO/PAT Quality Score"
+    )
+    fcf_trend_5yr: list[CashflowTrendItem] = Field(
+        default_factory=list, description="Trailing 5 audited fiscal years"
+    )
 
 
 class CompanyValuationResponse(BaseModel):
     ticker: str
     company_name: str
-    broad_sector: Optional[str] = None
-    market_cap_crore: Optional[float] = None
-    pe_ratio: Optional[float] = Field(None, description="Current Price-to-Earnings ratio")
-    median_pe_5yr: Optional[float] = Field(None, description="5-Year Historical Median P/E")
-    pb_ratio: Optional[float] = Field(None, description="Price-to-Book ratio")
-    ev_ebitda: Optional[float] = Field(None, description="Enterprise Value to EBITDA multiple")
-    dcf_implied_value_cr: Optional[float] = Field(None, description="DCF implied equity value in ₹ Cr")
-    dcf_upside_pct: Optional[float] = Field(None, description="Implied DCF upside/downside percentage")
-    valuation_flag: Optional[str] = Field(None, description="Valuation badge (Undervalued / Fair Value / Overvalued)")
-    historical_valuation_flag: Optional[str] = Field(None, description="Valuation vs 5-year median")
+    broad_sector: str | None = None
+    market_cap_crore: float | None = None
+    pe_ratio: float | None = Field(None, description="Current Price-to-Earnings ratio")
+    median_pe_5yr: float | None = Field(
+        None, description="5-Year Historical Median P/E"
+    )
+    pb_ratio: float | None = Field(None, description="Price-to-Book ratio")
+    ev_ebitda: float | None = Field(
+        None, description="Enterprise Value to EBITDA multiple"
+    )
+    dcf_implied_value_cr: float | None = Field(
+        None, description="DCF implied equity value in ₹ Cr"
+    )
+    dcf_upside_pct: float | None = Field(
+        None, description="Implied DCF upside/downside percentage"
+    )
+    valuation_flag: str | None = Field(
+        None, description="Valuation badge (Undervalued / Fair Value / Overvalued)"
+    )
+    historical_valuation_flag: str | None = Field(
+        None, description="Valuation vs 5-year median"
+    )
 
 
 class PeerMetricDetail(BaseModel):
     metric_name: str
-    metric_value: Optional[float] = None
-    percentile_rank: Optional[float] = None
-    classification: Optional[str] = None
-    benchmark_gap_pct: Optional[float] = None
+    metric_value: float | None = None
+    percentile_rank: float | None = None
+    classification: str | None = None
+    benchmark_gap_pct: float | None = None
 
 
 class PeerMemberDetail(BaseModel):
@@ -213,8 +244,8 @@ class PeerMemberDetail(BaseModel):
     best_in_class_count: int = 0
     watch_list_count: int = 0
     in_line_count: int = 0
-    composite_score_percentile: Optional[float] = None
-    composite_score_classification: Optional[str] = None
+    composite_score_percentile: float | None = None
+    composite_score_classification: str | None = None
     metrics: list[PeerMetricDetail] = Field(default_factory=list)
 
 
@@ -328,16 +359,22 @@ def load_universe_df_cached() -> pd.DataFrame:
         df = pd.read_sql_query(sql, conn)
 
         # Peer group join
-        pg_df = pd.read_sql_query("SELECT company_id, peer_group_name FROM peer_groups", conn)
+        pg_df = pd.read_sql_query(
+            "SELECT company_id, peer_group_name FROM peer_groups", conn
+        )
         df = df.merge(pg_df, on="company_id", how="left")
-        df["peer_group"] = df["peer_group_name"].fillna(df["broad_sector"]).fillna("General")
+        df["peer_group"] = (
+            df["peer_group_name"].fillna(df["broad_sector"]).fillna("General")
+        )
 
         # Partition 11 macro sectors (Utilities split from Energy)
         def assign_11_sectors(row: pd.Series) -> str:
             bs = str(row["broad_sector"])
             sub = str(row["sub_sector"]).lower()
             if bs == "Energy":
-                if any(k in sub for k in ["power", "utility", "transmission", "renewable"]):
+                if any(
+                    k in sub for k in ["power", "utility", "transmission", "renewable"]
+                ):
                     return "Utilities"
                 return "Energy"
             return bs
@@ -351,9 +388,13 @@ def load_universe_df_cached() -> pd.DataFrame:
         if screener_path.exists():
             try:
                 scr_df = pd.read_excel(screener_path, sheet_name="Summary")
-                cols = [c for c in scr_df.columns if c in ["company_id", "composite_ranking_score", "valuation_flag"]]
+                cols = [
+                    c
+                    for c in scr_df.columns
+                    if c in ["company_id", "composite_ranking_score", "valuation_flag"]
+                ]
                 df = df.merge(scr_df[cols], on="company_id", how="left")
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning("Could not read screener_output.xlsx: %s", exc)
 
         if "composite_ranking_score" not in df.columns:
@@ -363,9 +404,16 @@ def load_universe_df_cached() -> pd.DataFrame:
         if val_flags_path.exists():
             try:
                 val_df = pd.read_csv(val_flags_path)
-                if "valuation_flag" in val_df.columns and "valuation_flag" not in df.columns:
-                    df = df.merge(val_df[["company_id", "valuation_flag"]], on="company_id", how="left")
-            except Exception as exc:
+                if (
+                    "valuation_flag" in val_df.columns
+                    and "valuation_flag" not in df.columns
+                ):
+                    df = df.merge(
+                        val_df[["company_id", "valuation_flag"]],
+                        on="company_id",
+                        how="left",
+                    )
+            except Exception as exc:  # noqa: BLE001
                 logger.warning("Could not read valuation_flags.csv: %s", exc)
 
         if "valuation_flag" not in df.columns:
@@ -381,7 +429,9 @@ def load_universe_df_cached() -> pd.DataFrame:
 # ==============================================================================
 
 
-@app.get("/", tags=["Diagnostic"], summary="API Root Information", include_in_schema=False)
+@app.get(
+    "/", tags=["Diagnostic"], summary="API Root Information", include_in_schema=False
+)
 def root_info() -> dict[str, Any]:
     return {
         "platform": "N100 Financial Intelligence Platform API",
@@ -393,8 +443,18 @@ def root_info() -> dict[str, Any]:
     }
 
 
-@app.get("/health", tags=["Diagnostic"], summary="System Health & Database Verification", include_in_schema=False)
-@app.get("/api/v1/health", tags=["Diagnostic"], summary="System Health & Database Verification (v1)", include_in_schema=False)
+@app.get(
+    "/health",
+    tags=["Diagnostic"],
+    summary="System Health & Database Verification",
+    include_in_schema=False,
+)
+@app.get(
+    "/api/v1/health",
+    tags=["Diagnostic"],
+    summary="System Health & Database Verification (v1)",
+    include_in_schema=False,
+)
 def health_check() -> JSONResponse:
     db_path = get_db_path()
     try:
@@ -421,13 +481,12 @@ def health_check() -> JSONResponse:
             "db_row_counts": counts,
         }
         return JSONResponse(status_code=status.HTTP_200_OK, content=payload)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.error("Health check failed: %s", exc)
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"status": "unhealthy", "error": str(exc)},
         )
-
 
 
 @functools.lru_cache(maxsize=1)
@@ -441,22 +500,30 @@ def load_valuation_summary_cached() -> pd.DataFrame:
         if p.exists():
             try:
                 return pd.read_excel(p)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning("Failed to load %s: %s", p, exc)
     return pd.DataFrame()
 
 
-def compute_dcf_implied(fcf_base: Optional[float], mcap: Optional[float]) -> tuple[Optional[float], Optional[float]]:
+def compute_dcf_implied(
+    fcf_base: float | None, mcap: float | None
+) -> tuple[float | None, float | None]:
     """Compute 2-stage DCF implied enterprise/equity value and upside percentage."""
     if fcf_base is not None and not pd.isna(fcf_base) and fcf_base > 0:
         g = 0.12
         r = 0.115
         g_t = 0.045
-        pv_fcf = sum((fcf_base * ((1 + g) ** yr)) / ((1 + r) ** yr) for yr in range(1, 6))
+        pv_fcf = sum(
+            (fcf_base * ((1 + g) ** yr)) / ((1 + r) ** yr) for yr in range(1, 6)
+        )
         term_val = (fcf_base * ((1 + g) ** 5) * (1 + g_t)) / (r - g_t)
         pv_term = term_val / ((1 + r) ** 5)
         implied_val = round(pv_fcf + pv_term, 2)
-        upside = round(((implied_val - mcap) / mcap) * 100.0, 2) if mcap and mcap > 0 else None
+        upside = (
+            round(((implied_val - mcap) / mcap) * 100.0, 2)
+            if mcap and mcap > 0
+            else None
+        )
         return implied_val, upside
     return None, None
 
@@ -480,7 +547,9 @@ def compute_dcf_implied(fcf_base: Optional[float], mcap: Optional[float]) -> tup
     summary="List all 92 companies (alias)",
     include_in_schema=False,
 )
-def get_companies(sector: Optional[str] = Query(None, description="Filter by broad sector")) -> list[CompanySummary]:
+def get_companies(
+    sector: str | None = Query(None, description="Filter by broad sector")
+) -> list[CompanySummary]:
     df = load_universe_df_cached()
     if sector:
         target_sec = sector.strip().lower()
@@ -554,8 +623,12 @@ def get_company_profile(ticker: str) -> CompanyProfile:
     return CompanyProfile(
         id=str(row["company_id"]),
         company_name=str(row["company_name"]),
-        company_logo=str(row["company_logo"]) if pd.notna(row["company_logo"]) else None,
-        about_company=str(row["about_company"]) if pd.notna(row["about_company"]) else None,
+        company_logo=(
+            str(row["company_logo"]) if pd.notna(row["company_logo"]) else None
+        ),
+        about_company=(
+            str(row["about_company"]) if pd.notna(row["about_company"]) else None
+        ),
         website=str(row["website"]) if pd.notna(row["website"]) else None,
         nse_profile=str(row["nse_profile"]) if pd.notna(row["nse_profile"]) else None,
         bse_profile=str(row["bse_profile"]) if pd.notna(row["bse_profile"]) else None,
@@ -581,7 +654,9 @@ def get_company_ratios(ticker: str) -> CompanyRatiosResponse:
     clean_ticker = ticker.strip().upper()
     conn = get_db_connection()
     try:
-        co = conn.execute("SELECT company_name FROM companies WHERE UPPER(id) = ?", (clean_ticker,)).fetchone()
+        co = conn.execute(
+            "SELECT company_name FROM companies WHERE UPPER(id) = ?", (clean_ticker,)
+        ).fetchone()
         if not co:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -615,16 +690,36 @@ def get_company_financials(ticker: str) -> CompanyFinancialsResponse:
     clean_ticker = ticker.strip().upper()
     conn = get_db_connection()
     try:
-        co = conn.execute("SELECT company_name FROM companies WHERE UPPER(id) = ?", (clean_ticker,)).fetchone()
+        co = conn.execute(
+            "SELECT company_name FROM companies WHERE UPPER(id) = ?", (clean_ticker,)
+        ).fetchone()
         if not co:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Company with ticker '{ticker}' not found.",
             )
 
-        pl_rows = [dict(r) for r in conn.execute("SELECT * FROM profitandloss WHERE UPPER(company_id) = ? ORDER BY year ASC", (clean_ticker,)).fetchall()]
-        bs_rows = [dict(r) for r in conn.execute("SELECT * FROM balancesheet WHERE UPPER(company_id) = ? ORDER BY year ASC", (clean_ticker,)).fetchall()]
-        cf_rows = [dict(r) for r in conn.execute("SELECT * FROM cashflow WHERE UPPER(company_id) = ? ORDER BY year ASC", (clean_ticker,)).fetchall()]
+        pl_rows = [
+            dict(r)
+            for r in conn.execute(
+                "SELECT * FROM profitandloss WHERE UPPER(company_id) = ? ORDER BY year ASC",
+                (clean_ticker,),
+            ).fetchall()
+        ]
+        bs_rows = [
+            dict(r)
+            for r in conn.execute(
+                "SELECT * FROM balancesheet WHERE UPPER(company_id) = ? ORDER BY year ASC",
+                (clean_ticker,),
+            ).fetchall()
+        ]
+        cf_rows = [
+            dict(r)
+            for r in conn.execute(
+                "SELECT * FROM cashflow WHERE UPPER(company_id) = ? ORDER BY year ASC",
+                (clean_ticker,),
+            ).fetchall()
+        ]
 
         return CompanyFinancialsResponse(
             ticker=clean_ticker,
@@ -648,7 +743,9 @@ def get_company_peers(ticker: str) -> CompanyPeersResponse:
     clean_ticker = ticker.strip().upper()
     conn = get_db_connection()
     try:
-        co = conn.execute("SELECT company_name FROM companies WHERE UPPER(id) = ?", (clean_ticker,)).fetchone()
+        co = conn.execute(
+            "SELECT company_name FROM companies WHERE UPPER(id) = ?", (clean_ticker,)
+        ).fetchone()
         if not co:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -656,14 +753,32 @@ def get_company_peers(ticker: str) -> CompanyPeersResponse:
             )
 
         # Peer group determination
-        pg_row = conn.execute("SELECT peer_group_name FROM peer_groups WHERE UPPER(company_id) = ?", (clean_ticker,)).fetchone()
+        pg_row = conn.execute(
+            "SELECT peer_group_name FROM peer_groups WHERE UPPER(company_id) = ?",
+            (clean_ticker,),
+        ).fetchone()
         if pg_row:
             pg_name = pg_row["peer_group_name"]
-            members = [r["company_id"] for r in conn.execute("SELECT company_id FROM peer_groups WHERE peer_group_name = ? ORDER BY company_id", (pg_name,)).fetchall()]
+            members = [
+                r["company_id"]
+                for r in conn.execute(
+                    "SELECT company_id FROM peer_groups WHERE peer_group_name = ? ORDER BY company_id",
+                    (pg_name,),
+                ).fetchall()
+            ]
         else:
-            sec_row = conn.execute("SELECT broad_sector FROM sectors WHERE UPPER(company_id) = ?", (clean_ticker,)).fetchone()
+            sec_row = conn.execute(
+                "SELECT broad_sector FROM sectors WHERE UPPER(company_id) = ?",
+                (clean_ticker,),
+            ).fetchone()
             pg_name = sec_row["broad_sector"] if sec_row else "General"
-            members = [r["company_id"] for r in conn.execute("SELECT company_id FROM sectors WHERE broad_sector = ? ORDER BY company_id", (pg_name,)).fetchall()]
+            members = [
+                r["company_id"]
+                for r in conn.execute(
+                    "SELECT company_id FROM sectors WHERE broad_sector = ? ORDER BY company_id",
+                    (pg_name,),
+                ).fetchall()
+            ]
 
         # Query percentiles from peer_percentiles table
         target_metrics = ["ROE", "ROCE", "OPM", "Revenue CAGR 3yr", "Composite Score"]
@@ -677,8 +792,16 @@ def get_company_peers(ticker: str) -> CompanyPeersResponse:
             m_name = r["metric_name"]
             if m_name in target_metrics:
                 ranks_dict[m_name] = PeerMetricRank(
-                    value=float(r["metric_value"]) if r["metric_value"] is not None else None,
-                    percentile=float(r["percentile_rank"]) if r["percentile_rank"] is not None else None,
+                    value=(
+                        float(r["metric_value"])
+                        if r["metric_value"] is not None
+                        else None
+                    ),
+                    percentile=(
+                        float(r["percentile_rank"])
+                        if r["percentile_rank"] is not None
+                        else None
+                    ),
                     classification=str(r["classification"]),
                 )
 
@@ -733,11 +856,15 @@ def get_company_peers(ticker: str) -> CompanyPeersResponse:
     include_in_schema=False,
 )
 def run_screener_query(
-    min_roe: Optional[float] = Query(None, description="Minimum ROE (%)"),
-    max_de: Optional[float] = Query(None, description="Maximum Debt-to-Equity ratio"),
-    min_fcf: Optional[float] = Query(None, description="Minimum Free Cash Flow (INR Cr)"),
-    min_opm: Optional[float] = Query(None, description="Minimum Operating Profit Margin (%)"),
-    max_pe: Optional[float] = Query(None, description="Maximum Price-to-Earnings multiple"),
+    min_roe: float | None = Query(None, description="Minimum ROE (%)"),
+    max_de: float | None = Query(None, description="Maximum Debt-to-Equity ratio"),
+    min_fcf: float | None = Query(None, description="Minimum Free Cash Flow (INR Cr)"),
+    min_opm: float | None = Query(
+        None, description="Minimum Operating Profit Margin (%)"
+    ),
+    max_pe: float | None = Query(
+        None, description="Maximum Price-to-Earnings multiple"
+    ),
 ) -> list[ScreenerCompanyItem]:
     df = load_universe_df_cached().copy()
 
@@ -770,8 +897,16 @@ def run_screener_query(
                 de=float(row["de"]) if pd.notna(row["de"]) else None,
                 pe_ratio=float(row["pe_ratio"]) if pd.notna(row["pe_ratio"]) else None,
                 fcf_cr=float(row["fcf"]) if pd.notna(row["fcf"]) else None,
-                revenue_cagr_3yr=float(row["revenue_cagr_3yr"]) if pd.notna(row["revenue_cagr_3yr"]) else None,
-                composite_ranking_score=float(row["composite_ranking_score"]) if pd.notna(row["composite_ranking_score"]) else None,
+                revenue_cagr_3yr=(
+                    float(row["revenue_cagr_3yr"])
+                    if pd.notna(row["revenue_cagr_3yr"])
+                    else None
+                ),
+                composite_ranking_score=(
+                    float(row["composite_ranking_score"])
+                    if pd.notna(row["composite_ranking_score"])
+                    else None
+                ),
                 valuation_flag=str(row.get("valuation_flag", "Fair Value")),
             )
         )
@@ -823,7 +958,10 @@ def run_screener_preset(preset_name: str) -> list[ScreenerCompanyItem]:
 
     target_preset = None
     for p_key, p_val in presets.items():
-        if p_key == clean_name or p_val.get("name", "").lower().replace(" ", "_") == clean_name:
+        if (
+            p_key == clean_name
+            or p_val.get("name", "").lower().replace(" ", "_") == clean_name
+        ):
             target_preset = p_val
             break
 
@@ -872,8 +1010,16 @@ def run_screener_preset(preset_name: str) -> list[ScreenerCompanyItem]:
                 de=float(row["de"]) if pd.notna(row["de"]) else None,
                 pe_ratio=float(row["pe_ratio"]) if pd.notna(row["pe_ratio"]) else None,
                 fcf_cr=float(row["fcf"]) if pd.notna(row["fcf"]) else None,
-                revenue_cagr_3yr=float(row["revenue_cagr_3yr"]) if pd.notna(row["revenue_cagr_3yr"]) else None,
-                composite_ranking_score=float(row["composite_ranking_score"]) if pd.notna(row["composite_ranking_score"]) else None,
+                revenue_cagr_3yr=(
+                    float(row["revenue_cagr_3yr"])
+                    if pd.notna(row["revenue_cagr_3yr"])
+                    else None
+                ),
+                composite_ranking_score=(
+                    float(row["composite_ranking_score"])
+                    if pd.notna(row["composite_ranking_score"])
+                    else None
+                ),
                 valuation_flag=str(row.get("valuation_flag", "Fair Value")),
             )
         )
@@ -906,7 +1052,11 @@ def get_all_sectors() -> list[SectorSummaryItem]:
         s_roe = float(g["roe"].dropna().mean()) if not g["roe"].dropna().empty else 0.0
         s_opm = float(g["opm"].dropna().mean()) if not g["opm"].dropna().empty else 0.0
         s_de = float(g["de"].dropna().median()) if not g["de"].dropna().empty else 0.0
-        s_pe = float(g["pe_ratio"].dropna().median()) if not g["pe_ratio"].dropna().empty else 0.0
+        s_pe = (
+            float(g["pe_ratio"].dropna().median())
+            if not g["pe_ratio"].dropna().empty
+            else 0.0
+        )
         s_mcap = float(g["market_cap_crore"].dropna().sum())
 
         results.append(
@@ -949,13 +1099,31 @@ def get_sector_detail(sector_name: str) -> SectorDetailResponse:
         )
 
     resolved_name = matched.iloc[0]["sector_11"]
-    s_roe = float(matched["roe"].dropna().mean()) if not matched["roe"].dropna().empty else 0.0
-    s_opm = float(matched["opm"].dropna().mean()) if not matched["opm"].dropna().empty else 0.0
-    s_de = float(matched["de"].dropna().median()) if not matched["de"].dropna().empty else 0.0
-    s_pe = float(matched["pe_ratio"].dropna().median()) if not matched["pe_ratio"].dropna().empty else 0.0
+    s_roe = (
+        float(matched["roe"].dropna().mean())
+        if not matched["roe"].dropna().empty
+        else 0.0
+    )
+    s_opm = (
+        float(matched["opm"].dropna().mean())
+        if not matched["opm"].dropna().empty
+        else 0.0
+    )
+    s_de = (
+        float(matched["de"].dropna().median())
+        if not matched["de"].dropna().empty
+        else 0.0
+    )
+    s_pe = (
+        float(matched["pe_ratio"].dropna().median())
+        if not matched["pe_ratio"].dropna().empty
+        else 0.0
+    )
 
     companies_list: list[dict[str, Any]] = []
-    for _, row in matched.sort_values(by="composite_ranking_score", ascending=False).iterrows():
+    for _, row in matched.sort_values(
+        by="composite_ranking_score", ascending=False
+    ).iterrows():
         companies_list.append(
             {
                 "id": str(row["company_id"]),
@@ -963,8 +1131,14 @@ def get_sector_detail(sector_name: str) -> SectorDetailResponse:
                 "roe": float(row["roe"]) if pd.notna(row["roe"]) else None,
                 "opm": float(row["opm"]) if pd.notna(row["opm"]) else None,
                 "de": float(row["de"]) if pd.notna(row["de"]) else None,
-                "pe_ratio": float(row["pe_ratio"]) if pd.notna(row["pe_ratio"]) else None,
-                "composite_score": float(row["composite_ranking_score"]) if pd.notna(row["composite_ranking_score"]) else None,
+                "pe_ratio": (
+                    float(row["pe_ratio"]) if pd.notna(row["pe_ratio"]) else None
+                ),
+                "composite_score": (
+                    float(row["composite_ranking_score"])
+                    if pd.notna(row["composite_ranking_score"])
+                    else None
+                ),
                 "valuation_flag": str(row.get("valuation_flag", "Fair Value")),
             }
         )
@@ -1009,7 +1183,11 @@ def get_market_overview() -> MarketOverviewResponse:
             {
                 "company_id": str(row["company_id"]),
                 "company_name": str(row["company_name"]),
-                "composite_score": float(row["composite_ranking_score"]) if pd.notna(row["composite_ranking_score"]) else None,
+                "composite_score": (
+                    float(row["composite_ranking_score"])
+                    if pd.notna(row["composite_ranking_score"])
+                    else None
+                ),
                 "sector": str(row["broad_sector"]),
             }
         )
@@ -1022,7 +1200,6 @@ def get_market_overview() -> MarketOverviewResponse:
         count_low_leverage=low_de,
         top_companies=top_cos,
     )
-
 
 
 # ==============================================================================
@@ -1050,7 +1227,9 @@ def get_company_cashflow(ticker: str) -> CompanyCashflowResponse:
     cur = conn.cursor()
 
     # Verify company exists
-    co_row = cur.execute("SELECT id, company_name FROM companies WHERE UPPER(id) = ?", (clean_ticker,)).fetchone()
+    co_row = cur.execute(
+        "SELECT id, company_name FROM companies WHERE UPPER(id) = ?", (clean_ticker,)
+    ).fetchone()
     if not co_row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1071,7 +1250,11 @@ def get_company_cashflow(ticker: str) -> CompanyCashflowResponse:
 
     pattern = pattern_row["capital_allocation_pattern"] if pattern_row else None
     cfo_label = pattern_row["cfo_quality_label"] if pattern_row else None
-    cfo_score = float(pattern_row["cfo_quality_score"]) if pattern_row and pattern_row["cfo_quality_score"] is not None else None
+    cfo_score = (
+        float(pattern_row["cfo_quality_score"])
+        if pattern_row and pattern_row["cfo_quality_score"] is not None
+        else None
+    )
 
     # Fetch last 5 audited fiscal years from cashflow table
     cf_rows = cur.execute(
@@ -1086,11 +1269,27 @@ def get_company_cashflow(ticker: str) -> CompanyCashflowResponse:
 
     trends: list[CashflowTrendItem] = []
     for r in cf_rows:
-        cfo_val = float(r["operating_activity"]) if r["operating_activity"] is not None else None
-        cfi_val = float(r["investing_activity"]) if r["investing_activity"] is not None else None
-        cff_val = float(r["financing_activity"]) if r["financing_activity"] is not None else None
+        cfo_val = (
+            float(r["operating_activity"])
+            if r["operating_activity"] is not None
+            else None
+        )
+        cfi_val = (
+            float(r["investing_activity"])
+            if r["investing_activity"] is not None
+            else None
+        )
+        cff_val = (
+            float(r["financing_activity"])
+            if r["financing_activity"] is not None
+            else None
+        )
         net_val = float(r["net_cash_flow"]) if r["net_cash_flow"] is not None else None
-        fcf_val = round(cfo_val + cfi_val, 2) if (cfo_val is not None and cfi_val is not None) else None
+        fcf_val = (
+            round(cfo_val + cfi_val, 2)
+            if (cfo_val is not None and cfi_val is not None)
+            else None
+        )
 
         trends.append(
             CashflowTrendItem(
@@ -1145,8 +1344,16 @@ def get_company_valuation(ticker: str) -> CompanyValuationResponse:
         )
 
     row = matched.iloc[0]
-    mcap = float(row["market_cap_crore"]) if pd.notna(row.get("market_cap_crore")) else None
-    fcf = float(row["free_cash_flow_cr"]) if pd.notna(row.get("free_cash_flow_cr")) else None
+    mcap = (
+        float(row["market_cap_crore"])
+        if pd.notna(row.get("market_cap_crore"))
+        else None
+    )
+    fcf = (
+        float(row["free_cash_flow_cr"])
+        if pd.notna(row.get("free_cash_flow_cr"))
+        else None
+    )
     dcf_val, dcf_upside = compute_dcf_implied(fcf, mcap)
 
     return CompanyValuationResponse(
@@ -1155,13 +1362,17 @@ def get_company_valuation(ticker: str) -> CompanyValuationResponse:
         broad_sector=str(row.get("broad_sector", "")),
         market_cap_crore=mcap,
         pe_ratio=float(row["pe_ratio"]) if pd.notna(row.get("pe_ratio")) else None,
-        median_pe_5yr=float(row["median_pe_5yr"]) if pd.notna(row.get("median_pe_5yr")) else None,
+        median_pe_5yr=(
+            float(row["median_pe_5yr"]) if pd.notna(row.get("median_pe_5yr")) else None
+        ),
         pb_ratio=float(row["pb_ratio"]) if pd.notna(row.get("pb_ratio")) else None,
         ev_ebitda=float(row["ev_ebitda"]) if pd.notna(row.get("ev_ebitda")) else None,
         dcf_implied_value_cr=dcf_val,
         dcf_upside_pct=dcf_upside,
         valuation_flag=str(row.get("valuation_flag", "Fair Value")),
-        historical_valuation_flag=str(row.get("historical_valuation_flag", "Fair Value")),
+        historical_valuation_flag=str(
+            row.get("historical_valuation_flag", "Fair Value")
+        ),
     )
 
 
@@ -1190,11 +1401,20 @@ def get_peer_group_analysis(peer_group_name: str) -> PeerGroupDetailResponse:
     cur = conn.cursor()
 
     # Get available peer groups
-    all_groups = [r["peer_group_name"] for r in cur.execute("SELECT DISTINCT peer_group_name FROM peer_percentiles").fetchall()]
+    all_groups = [
+        r["peer_group_name"]
+        for r in cur.execute(
+            "SELECT DISTINCT peer_group_name FROM peer_percentiles"
+        ).fetchall()
+    ]
     matched_group = next((g for g in all_groups if g.lower() == clean_query), None)
 
     # Alias handling (e.g. 'it' -> 'IT Services')
-    if not matched_group and clean_query in ["it", "it services", "information technology"]:
+    if not matched_group and clean_query in [
+        "it",
+        "it services",
+        "information technology",
+    ]:
         matched_group = "IT Services"
 
     if not matched_group:
@@ -1245,16 +1465,30 @@ def get_peer_group_analysis(peer_group_name: str) -> PeerGroupDetailResponse:
             members_map[cid]["in_line_count"] += 1
 
         if r["metric_name"] == "Composite Score":
-            members_map[cid]["composite_score_percentile"] = float(r["percentile_rank"]) if r["percentile_rank"] is not None else None
+            members_map[cid]["composite_score_percentile"] = (
+                float(r["percentile_rank"])
+                if r["percentile_rank"] is not None
+                else None
+            )
             members_map[cid]["composite_score_classification"] = classification
 
         members_map[cid]["metrics"].append(
             PeerMetricDetail(
                 metric_name=r["metric_name"],
-                metric_value=float(r["metric_value"]) if r["metric_value"] is not None else None,
-                percentile_rank=float(r["percentile_rank"]) if r["percentile_rank"] is not None else None,
+                metric_value=(
+                    float(r["metric_value"]) if r["metric_value"] is not None else None
+                ),
+                percentile_rank=(
+                    float(r["percentile_rank"])
+                    if r["percentile_rank"] is not None
+                    else None
+                ),
                 classification=classification,
-                benchmark_gap_pct=float(r["benchmark_gap_pct"]) if r["benchmark_gap_pct"] is not None else None,
+                benchmark_gap_pct=(
+                    float(r["benchmark_gap_pct"])
+                    if r["benchmark_gap_pct"] is not None
+                    else None
+                ),
             )
         )
 
@@ -1285,7 +1519,9 @@ def get_peer_group_analysis(peer_group_name: str) -> PeerGroupDetailResponse:
 )
 def get_tearsheet_report(ticker: str) -> FileResponse:
     clean_ticker = ticker.strip().upper()
-    tearsheet_path = REPO_ROOT / "reports" / "tearsheets" / f"{clean_ticker}_tearsheet.pdf"
+    tearsheet_path = (
+        REPO_ROOT / "reports" / "tearsheets" / f"{clean_ticker}_tearsheet.pdf"
+    )
 
     if not tearsheet_path.exists() or not tearsheet_path.is_file():
         raise HTTPException(
@@ -1319,11 +1555,14 @@ def get_sector_report_pdf(sector_name: str) -> FileResponse:
     sector_dir = REPO_ROOT / "reports" / "sector_reports"
 
     # Search for matching pdf file in sector_reports directory
-    matched_file: Optional[Path] = None
+    matched_file: Path | None = None
     if sector_dir.exists():
         for f in sector_dir.glob("*.pdf"):
             base_name = f.stem.replace("_report", "").lower()
-            if base_name == clean_input.lower() or base_name == clean_input.lower().replace("_", ""):
+            if (
+                base_name == clean_input.lower()
+                or base_name == clean_input.lower().replace("_", "")
+            ):
                 matched_file = f
                 break
 
@@ -1334,7 +1573,11 @@ def get_sector_report_pdf(sector_name: str) -> FileResponse:
             matched_file = cand
 
     if not matched_file or not matched_file.is_file():
-        available = sorted([f.stem.replace("_report", "") for f in sector_dir.glob("*.pdf")]) if sector_dir.exists() else []
+        available = (
+            sorted([f.stem.replace("_report", "") for f in sector_dir.glob("*.pdf")])
+            if sector_dir.exists()
+            else []
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Sector report for '{sector_name}' not found. Available sector reports: {available}",

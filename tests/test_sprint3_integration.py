@@ -26,7 +26,6 @@ if str(WORKSPACE_ROOT) not in sys.path:
 import openpyxl
 import pandas as pd
 import pytest
-
 from src.analytics.peer import (
     populate_peer_percentiles,
 )

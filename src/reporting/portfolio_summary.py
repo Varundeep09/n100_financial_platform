@@ -17,7 +17,6 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
@@ -25,6 +24,8 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (
     Image as RLImage,
+)
+from reportlab.platypus import (
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -81,9 +82,7 @@ class NumberedLandscapeCanvas(canvas.Canvas):
         self.line(36, 30, 805, 30)
 
         # Footer text
-        footer_text = (
-            "Institutional Equity Research | All 92 Nifty 100 Constituents | Strict Fundamental Triage"
-        )
+        footer_text = "Institutional Equity Research | All 92 Nifty 100 Constituents | Strict Fundamental Triage"
         self.drawString(36, 20, footer_text)
         page_str = f"Page {self._pageNumber} of {page_count}"
         self.drawRightString(805, 20, page_str)
@@ -129,7 +128,9 @@ def load_portfolio_dataset(db_path: Path | str = DEFAULT_DB_PATH) -> pd.DataFram
     conn.close()
 
     df = df.merge(df_pg, on="company_id", how="left")
-    df["peer_group"] = df["peer_group_name"].fillna(df["broad_sector"]).fillna("General")
+    df["peer_group"] = (
+        df["peer_group_name"].fillna(df["broad_sector"]).fillna("General")
+    )
 
     # Load screener summary (composite ranking score & preset memberships)
     screener_path = REPO_ROOT / "screener_output.xlsx"
@@ -155,9 +156,13 @@ def load_portfolio_dataset(db_path: Path | str = DEFAULT_DB_PATH) -> pd.DataFram
 
             df_scr["preset_memberships"] = df_scr.apply(get_presets, axis=1)
 
-            cols_to_merge = ["company_id", "composite_ranking_score", "preset_memberships"]
+            cols_to_merge = [
+                "company_id",
+                "composite_ranking_score",
+                "preset_memberships",
+            ]
             df = df.merge(df_scr[cols_to_merge], on="company_id", how="left")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("Could not read screener_output.xlsx: %s", exc)
 
     if "composite_ranking_score" not in df.columns:
@@ -176,7 +181,7 @@ def load_portfolio_dataset(db_path: Path | str = DEFAULT_DB_PATH) -> pd.DataFram
                     on="company_id",
                     how="left",
                 )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("Could not read valuation_flags.csv: %s", exc)
 
     if "valuation_flag" not in df.columns:
@@ -210,14 +215,26 @@ def generate_universe_charts(df: pd.DataFrame) -> tuple[RLImage, RLImage]:
     ax.set_yticks(range(len(sec_agg)))
     ax.set_yticklabels(sec_agg.index, fontsize=6.5, fontweight="bold")
     ax.set_xlabel("Market Cap (INR Lakh Crore)", fontsize=7, fontweight="bold")
-    ax.set_title("Nifty 100 Sector Market Cap & Constituent Count", fontsize=8, fontweight="bold", pad=4)
+    ax.set_title(
+        "Nifty 100 Sector Market Cap & Constituent Count",
+        fontsize=8,
+        fontweight="bold",
+        pad=4,
+    )
     ax.grid(axis="x", linestyle="--", alpha=0.4)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
     for i, (bar, cnt) in enumerate(zip(bars, sec_agg["count"])):
         w = bar.get_width()
-        ax.text(w + 0.1, bar.get_y() + bar.get_height() / 2, f"{cnt} cos", va="center", fontsize=6, color="#475569")
+        ax.text(
+            w + 0.1,
+            bar.get_y() + bar.get_height() / 2,
+            f"{cnt} cos",
+            va="center",
+            fontsize=6,
+            color="#475569",
+        )
 
     buf1 = io.BytesIO()
     plt.tight_layout()
@@ -229,18 +246,35 @@ def generate_universe_charts(df: pd.DataFrame) -> tuple[RLImage, RLImage]:
     # Chart 2: Composite Ranking Score Distribution
     fig, ax = plt.subplots(figsize=(6.2, 2.3), dpi=200)
     valid_scores = df["composite_ranking_score"].dropna()
-    n, bins, patches = ax.hist(
+    _n, _bins, _patches = ax.hist(
         valid_scores,
         bins=10,
         color="#0D9488",
         edgecolor="#042F2E",
         rwidth=0.85,
     )
-    ax.axvline(valid_scores.median(), color="#DC2626", linestyle="--", linewidth=1.5, label=f"Median: {valid_scores.median():.1f}")
-    ax.axvline(valid_scores.mean(), color="#D97706", linestyle=":", linewidth=1.5, label=f"Mean: {valid_scores.mean():.1f}")
+    ax.axvline(
+        valid_scores.median(),
+        color="#DC2626",
+        linestyle="--",
+        linewidth=1.5,
+        label=f"Median: {valid_scores.median():.1f}",
+    )
+    ax.axvline(
+        valid_scores.mean(),
+        color="#D97706",
+        linestyle=":",
+        linewidth=1.5,
+        label=f"Mean: {valid_scores.mean():.1f}",
+    )
     ax.set_xlabel("Composite Health Score (0-100)", fontsize=7, fontweight="bold")
     ax.set_ylabel("Number of Companies", fontsize=7, fontweight="bold")
-    ax.set_title("Composite Financial Health Score Distribution", fontsize=8, fontweight="bold", pad=4)
+    ax.set_title(
+        "Composite Financial Health Score Distribution",
+        fontsize=8,
+        fontweight="bold",
+        pad=4,
+    )
     ax.legend(fontsize=6.5, loc="upper left")
     ax.grid(axis="y", linestyle="--", alpha=0.4)
     ax.spines["top"].set_visible(False)
@@ -354,7 +388,9 @@ def generate_portfolio_summary_pdf(
     story: list[Any] = []
 
     # Title & Subtitle Header
-    story.append(Paragraph("NIFTY 100 PORTFOLIO SUMMARY & COMPOSITE RANKINGS", title_style))
+    story.append(
+        Paragraph("NIFTY 100 PORTFOLIO SUMMARY & COMPOSITE RANKINGS", title_style)
+    )
     story.append(
         Paragraph(
             f"Comprehensive Universe Coverage: {total_companies} Companies  |  "
@@ -369,9 +405,13 @@ def generate_portfolio_summary_pdf(
     # Universe Summary Stats Cards (1 row x 6 columns)
     def make_kpi_cell(label: str, value: str) -> list[Any]:
         return [
-            Paragraph(f"<font size='6' color='#64748B'><b>{label}</b></font>", cell_center),
+            Paragraph(
+                f"<font size='6' color='#64748B'><b>{label}</b></font>", cell_center
+            ),
             Spacer(1, 1),
-            Paragraph(f"<font size='10' color='#1E3A8A'><b>{value}</b></font>", cell_center),
+            Paragraph(
+                f"<font size='10' color='#1E3A8A'><b>{value}</b></font>", cell_center
+            ),
         ]
 
     kpi_cards = [
@@ -457,7 +497,9 @@ def generate_portfolio_summary_pdf(
         roe_val = f"{row['roe']:.1f}%" if pd.notna(row["roe"]) else "N/A"
         opm_val = f"{row['opm']:.1f}%" if pd.notna(row["opm"]) else "N/A"
         de_val = f"{row['de']:.2f}" if pd.notna(row["de"]) else "N/A"
-        rev_val = f"{row['rev_cagr_3yr']:.1f}%" if pd.notna(row["rev_cagr_3yr"]) else "N/A"
+        rev_val = (
+            f"{row['rev_cagr_3yr']:.1f}%" if pd.notna(row["rev_cagr_3yr"]) else "N/A"
+        )
         v_flag = str(row["valuation_flag"])
         presets = str(row["preset_memberships"])
 
@@ -503,4 +545,6 @@ def generate_portfolio_summary_pdf(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     pdf = generate_portfolio_summary_pdf()
-    print(f"Generated portfolio summary PDF: {pdf} (Size: {pdf.stat().st_size:,} bytes)")
+    print(
+        f"Generated portfolio summary PDF: {pdf} (Size: {pdf.stat().st_size:,} bytes)"
+    )

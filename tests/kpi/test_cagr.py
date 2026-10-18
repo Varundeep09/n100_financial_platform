@@ -20,7 +20,6 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-
 from src.analytics.cagr import (
     calculate_cagr,
     calculate_cagr_metrics,

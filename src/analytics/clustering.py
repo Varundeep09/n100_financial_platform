@@ -11,15 +11,15 @@ from __future__ import annotations
 import logging
 import sqlite3
 from pathlib import Path
-from typing import Any
 
-import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
 logger = logging.getLogger("n100_clustering")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_DB_PATH = REPO_ROOT / "db" / "nifty100.db"
@@ -191,7 +191,7 @@ def run_clustering(
         REPORT_OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
         result_df.to_csv(REPORT_OUTPUT_CSV, index=False)
         logger.info("Synchronized cluster labels to %s", REPORT_OUTPUT_CSV)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.warning("Could not write to reports/cluster_labels.csv: %s", exc)
 
     return result_df

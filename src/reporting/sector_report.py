@@ -87,9 +87,7 @@ class NumberedCanvas(canvas.Canvas):
         self.line(36, 36, 559, 36)
 
         # Footer text
-        footer_text = (
-            "Institutional Equity Research | Confidential | Generated for Nifty 100 Universe"
-        )
+        footer_text = "Institutional Equity Research | Confidential | Generated for Nifty 100 Universe"
         self.drawString(36, 26, footer_text)
         page_str = f"Page {self._pageNumber} of {page_count}"
         self.drawRightString(559, 26, page_str)
@@ -169,7 +167,7 @@ def load_sector_dataset(
                     on="company_id",
                     how="left",
                 )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("Could not read screener_output.xlsx: %s", exc)
 
     if "composite_ranking_score" not in df.columns:
@@ -186,7 +184,7 @@ def load_sector_dataset(
                     on="company_id",
                     how="left",
                 )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("Could not read valuation_flags.csv: %s", exc)
 
     if "valuation_flag" not in df.columns:
@@ -208,7 +206,9 @@ def generate_sector_insight_sentence(
 ) -> str:
     """Auto-generate one synthetic institutional insight sentence comparing highest/lowest metrics."""
     display_name = (
-        "IT Services" if sector_name in ("Information Technology", "IT Services") else sector_name
+        "IT Services"
+        if sector_name in ("Information Technology", "IT Services")
+        else sector_name
     )
 
     if display_name == "IT Services":
@@ -310,7 +310,9 @@ def generate_sector_report(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Handle naming aliases
-    target_sector = "Information Technology" if sector_name == "IT Services" else sector_name
+    target_sector = (
+        "Information Technology" if sector_name == "IT Services" else sector_name
+    )
     sector_slug = sector_name.replace(" ", "_")
     output_pdf = output_dir / f"{sector_slug}_report.pdf"
 
@@ -329,10 +331,13 @@ def generate_sector_report(
     s_count = len(sec_df)
     s_mcap = sec_df["market_cap_crore"].dropna().sum()
     s_roe = sec_df["roe"].dropna().mean() if not sec_df["roe"].dropna().empty else 0.0
-    s_roce = sec_df["roce"].dropna().mean() if not sec_df["roce"].dropna().empty else 0.0
     s_opm = sec_df["opm"].dropna().mean() if not sec_df["opm"].dropna().empty else 0.0
     s_de = sec_df["de"].dropna().median() if not sec_df["de"].dropna().empty else 0.0
-    s_pe = sec_df["pe_ratio"].dropna().median() if not sec_df["pe_ratio"].dropna().empty else 0.0
+    s_pe = (
+        sec_df["pe_ratio"].dropna().median()
+        if not sec_df["pe_ratio"].dropna().empty
+        else 0.0
+    )
     s_rev = (
         sec_df["rev_cagr_3yr"].dropna().mean()
         if not sec_df["rev_cagr_3yr"].dropna().empty
@@ -505,7 +510,9 @@ def generate_sector_report(
         ]
     ]
 
-    for idx, (m_label, s_val, u_val, delta, unit, higher_is_better) in enumerate(metrics_comp, start=1):
+    for idx, (m_label, s_val, u_val, delta, unit, higher_is_better) in enumerate(
+        metrics_comp, start=1
+    ):
         is_green = (delta >= 0) if higher_is_better else (delta <= 0)
         color_hex = "#15803D" if is_green else "#B91C1C"
         pos_text = "Favorable (Outperforming)" if is_green else "Unfavorable / Headwind"
@@ -520,7 +527,9 @@ def generate_sector_report(
                     f"<font color='{color_hex}'><b>{delta_sign}{delta:.1f}{unit}</b></font>",
                     cell_center,
                 ),
-                Paragraph(f"<font color='{color_hex}'><b>{pos_text}</b></font>", cell_center),
+                Paragraph(
+                    f"<font color='{color_hex}'><b>{pos_text}</b></font>", cell_center
+                ),
             ]
         )
 
@@ -532,7 +541,12 @@ def generate_sector_report(
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
                 ("TOPPADDING", (0, 0), (-1, -1), 4.5),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 4.5),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+                (
+                    "ROWBACKGROUNDS",
+                    (0, 1),
+                    (-1, -1),
+                    [colors.white, colors.HexColor("#F8FAFC")],
+                ),
             ]
         )
     )
@@ -579,7 +593,12 @@ def generate_sector_report(
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
                 ("TOPPADDING", (0, 0), (-1, -1), 4.5),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 4.5),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F0FDF4")]),
+                (
+                    "ROWBACKGROUNDS",
+                    (0, 1),
+                    (-1, -1),
+                    [colors.white, colors.HexColor("#F0FDF4")],
+                ),
             ]
         )
     )
@@ -627,7 +646,9 @@ def generate_sector_report(
         roce_val = f"{row['roce']:.1f}%" if pd.notna(row["roce"]) else "N/A"
         opm_val = f"{row['opm']:.1f}%" if pd.notna(row["opm"]) else "N/A"
         de_val = f"{row['de']:.2f}" if pd.notna(row["de"]) else "N/A"
-        rev_val = f"{row['rev_cagr_3yr']:.1f}%" if pd.notna(row["rev_cagr_3yr"]) else "N/A"
+        rev_val = (
+            f"{row['rev_cagr_3yr']:.1f}%" if pd.notna(row["rev_cagr_3yr"]) else "N/A"
+        )
         sc_val = (
             f"{row['composite_ranking_score']:.1f}"
             if pd.notna(row["composite_ranking_score"])
@@ -643,14 +664,18 @@ def generate_sector_report(
             else:
                 row_bg = colors.white
         else:
-            row_bg = colors.HexColor("#DCFCE7") if idx == 1 else colors.HexColor("#FEE2E2")
+            row_bg = (
+                colors.HexColor("#DCFCE7") if idx == 1 else colors.HexColor("#FEE2E2")
+            )
 
         table_style_commands.append(("BACKGROUND", (0, idx), (-1, idx), row_bg))
 
         rank_rows.append(
             [
                 Paragraph(f"#{idx}", cell_center_bold),
-                Paragraph(f"{row['company_name']} ({row['company_id']})", cell_left_bold),
+                Paragraph(
+                    f"{row['company_name']} ({row['company_id']})", cell_left_bold
+                ),
                 Paragraph(roe_val, cell_center),
                 Paragraph(roce_val, cell_center),
                 Paragraph(opm_val, cell_center),
@@ -669,7 +694,9 @@ def generate_sector_report(
     # =========================================================================
     # PAGE 3: KEY FINDINGS & INSIGHTS
     # =========================================================================
-    story.append(Paragraph(f"{display_title}: Key Findings & Peer Analysis", title_style))
+    story.append(
+        Paragraph(f"{display_title}: Key Findings & Peer Analysis", title_style)
+    )
     story.append(
         Paragraph(
             "Institutional Peer Percentiles, Competitive Tiering & Sector Fundamentals Synthesis",
@@ -698,7 +725,7 @@ def generate_sector_report(
                 cell_left_bold,
             )
         ],
-        [Paragraph(f"<i>\"{insight_sentence}\"</i>", body_style)],
+        [Paragraph(f'<i>"{insight_sentence}"</i>', body_style)],
     ]
     insight_table = Table(insight_content, colWidths=[513])
     insight_table.setStyle(
@@ -757,7 +784,9 @@ def generate_sector_report(
     if not bic_counts.empty:
         for cid, count in bic_counts.items():
             cname = cid_to_name.get(cid, cid)
-            status_desc = "Superior Leadership" if count >= 8 else "Peer Benchmark Outperformer"
+            status_desc = (
+                "Superior Leadership" if count >= 8 else "Peer Benchmark Outperformer"
+            )
             bic_rows.append(
                 [
                     Paragraph(cname, cell_left_bold),
@@ -776,7 +805,9 @@ def generate_sector_report(
                 Paragraph(str(top_co["company_name"]), cell_left_bold),
                 Paragraph(str(top_co["company_id"]), cell_center),
                 Paragraph("Sector Top Score", cell_center_bold),
-                Paragraph("<font color='#15803D'><b>High Quality Tier</b></font>", cell_center),
+                Paragraph(
+                    "<font color='#15803D'><b>High Quality Tier</b></font>", cell_center
+                ),
             ]
         )
 
@@ -788,7 +819,12 @@ def generate_sector_report(
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
                 ("TOPPADDING", (0, 0), (-1, -1), 4),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F0FDF4")]),
+                (
+                    "ROWBACKGROUNDS",
+                    (0, 1),
+                    (-1, -1),
+                    [colors.white, colors.HexColor("#F0FDF4")],
+                ),
             ]
         )
     )
@@ -816,13 +852,17 @@ def generate_sector_report(
     if not wl_counts.empty:
         for cid, count in wl_counts.items():
             cname = cid_to_name.get(cid, cid)
-            risk_desc = "High Scrutiny Alert" if count >= 8 else "Elevated Benchmark Lag"
+            risk_desc = (
+                "High Scrutiny Alert" if count >= 8 else "Elevated Benchmark Lag"
+            )
             wl_rows.append(
                 [
                     Paragraph(cname, cell_left_bold),
                     Paragraph(cid, cell_center),
                     Paragraph(f"<b>{count} Metrics</b>", cell_center_bold),
-                    Paragraph(f"<font color='#B91C1C'><b>{risk_desc}</b></font>", cell_center),
+                    Paragraph(
+                        f"<font color='#B91C1C'><b>{risk_desc}</b></font>", cell_center
+                    ),
                 ]
             )
     else:
@@ -832,7 +872,9 @@ def generate_sector_report(
                 Paragraph(str(bottom_co["company_name"]), cell_left_bold),
                 Paragraph(str(bottom_co["company_id"]), cell_center),
                 Paragraph("Sector Lowest Score", cell_center_bold),
-                Paragraph("<font color='#B91C1C'><b>Moderate Scrutiny</b></font>", cell_center),
+                Paragraph(
+                    "<font color='#B91C1C'><b>Moderate Scrutiny</b></font>", cell_center
+                ),
             ]
         )
 
@@ -844,7 +886,12 @@ def generate_sector_report(
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
                 ("TOPPADDING", (0, 0), (-1, -1), 4),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#FEF2F2")]),
+                (
+                    "ROWBACKGROUNDS",
+                    (0, 1),
+                    (-1, -1),
+                    [colors.white, colors.HexColor("#FEF2F2")],
+                ),
             ]
         )
     )

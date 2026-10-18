@@ -12,7 +12,6 @@ from pathlib import Path
 
 import openpyxl
 import pytest
-
 from src.analytics.peer_comparison import generate_peer_comparison_workbook
 from src.screener.engine import DEFAULT_DB_PATH
 

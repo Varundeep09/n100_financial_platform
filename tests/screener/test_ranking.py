@@ -8,7 +8,6 @@ from __future__ import annotations
 import openpyxl
 import pandas as pd
 import pytest
-
 from src.screener.engine import load_screener_universe, run_all_presets
 from src.screener.ranking import (
     calculate_composite_ranking,

@@ -21,7 +21,7 @@ db/*.db
 .env
 
 # pytest artifacts
-reports/pytest_report.html
+!reports/pytest_report.html
 .pytest_cache/
 
 # OS and editor

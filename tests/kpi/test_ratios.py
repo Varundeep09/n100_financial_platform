@@ -18,7 +18,6 @@ Includes tests for:
 from pathlib import Path
 
 import pytest
-
 from src.analytics.ratios import (
     FINANCIALS_SECTOR_COMPANIES,
     OPM_DISCREPANCIES,

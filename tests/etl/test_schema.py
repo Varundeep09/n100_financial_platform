@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-
 from db.loader import (
     load_all_tables,
     transform_companies,

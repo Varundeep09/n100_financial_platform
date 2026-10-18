@@ -9,7 +9,6 @@ from __future__ import annotations
 import re
 import sqlite3
 from pathlib import Path
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DB_PATH = REPO_ROOT / "db" / "nifty100.db"
@@ -26,7 +25,9 @@ def test_all_ninety_two_tearsheet_pdfs_exist() -> None:
     company_ids = [row[0] for row in cursor.fetchall()]
     conn.close()
 
-    assert len(company_ids) == 92, f"Expected 92 companies in DB, found {len(company_ids)}"
+    assert (
+        len(company_ids) == 92
+    ), f"Expected 92 companies in DB, found {len(company_ids)}"
 
     missing_tearsheets = []
     for cid in company_ids:
@@ -34,10 +35,14 @@ def test_all_ninety_two_tearsheet_pdfs_exist() -> None:
         if not pdf_path.exists():
             missing_tearsheets.append(cid)
 
-    assert not missing_tearsheets, f"Missing tearsheet PDFs for companies: {missing_tearsheets}"
+    assert (
+        not missing_tearsheets
+    ), f"Missing tearsheet PDFs for companies: {missing_tearsheets}"
 
     all_pdfs = list(TEARSHEETS_DIR.glob("*_tearsheet.pdf"))
-    assert len(all_pdfs) == 92, f"Expected exactly 92 PDF tearsheets, found {len(all_pdfs)}"
+    assert (
+        len(all_pdfs) == 92
+    ), f"Expected exactly 92 PDF tearsheets, found {len(all_pdfs)}"
 
 
 def test_tearsheet_pdfs_non_empty_and_valid() -> None:
@@ -68,4 +73,6 @@ def test_tearsheet_pdfs_non_empty_and_valid() -> None:
 
     assert not undersized_files, f"Tearsheets under 20KB: {undersized_files}"
     assert not invalid_header_files, f"Invalid PDF headers in: {invalid_header_files}"
-    assert not page_count_violations, f"Tearsheets with != 2 pages: {page_count_violations}"
+    assert (
+        not page_count_violations
+    ), f"Tearsheets with != 2 pages: {page_count_violations}"

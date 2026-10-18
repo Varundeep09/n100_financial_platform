@@ -21,12 +21,10 @@ Verifies:
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
-
 from src.api.main import REPO_ROOT, app
 
 
@@ -128,7 +126,9 @@ def test_screener_presets_returns_six_presets(client: TestClient) -> None:
         "asset_light_champion",
         "financial_health",
     }
-    assert expected_keys.issubset(preset_keys), f"Missing presets: {expected_keys - preset_keys}"
+    assert expected_keys.issubset(
+        preset_keys
+    ), f"Missing presets: {expected_keys - preset_keys}"
 
 
 def test_sectors_returns_eleven_sectors(client: TestClient) -> None:
@@ -140,7 +140,9 @@ def test_sectors_returns_eleven_sectors(client: TestClient) -> None:
     assert len(sectors) == 11, f"Expected exactly 11 sectors, got {len(sectors)}"
 
     total_cos = sum(s["company_count"] for s in sectors)
-    assert total_cos == 92, f"Expected sum of companies across 11 sectors == 92, got {total_cos}"
+    assert (
+        total_cos == 92
+    ), f"Expected sum of companies across 11 sectors == 92, got {total_cos}"
 
 
 def test_market_overview_returns_expected_keys(client: TestClient) -> None:
@@ -161,7 +163,9 @@ def test_market_overview_returns_expected_keys(client: TestClient) -> None:
         assert key in data, f"Key '{key}' missing from /market/overview payload"
 
     assert data["total_companies"] == 92
-    assert len(data["top_companies"]) == 3, f"Expected top 3 companies, got {len(data['top_companies'])}"
+    assert (
+        len(data["top_companies"]) == 3
+    ), f"Expected top 3 companies, got {len(data['top_companies'])}"
 
 
 # ==============================================================================
@@ -204,7 +208,9 @@ def test_all_16_endpoints_in_openapi() -> None:
 
     for ep in expected_endpoints:
         assert ep in paths, f"Expected endpoint '{ep}' missing from docs/openapi.json"
-    assert len(paths) == 16, f"Expected exactly 16 documented endpoints, got {len(paths)}"
+    assert (
+        len(paths) == 16
+    ), f"Expected exactly 16 documented endpoints, got {len(paths)}"
 
 
 def test_tearsheet_fileresponse_returns_pdf_content_type(client: TestClient) -> None:
@@ -212,8 +218,12 @@ def test_tearsheet_fileresponse_returns_pdf_content_type(client: TestClient) -> 
     response = client.get("/api/v1/reports/tearsheet/TCS")
     assert response.status_code == 200, f"Expected 200, got {response.status_code}"
     content_type = response.headers.get("content-type", "")
-    assert "application/pdf" in content_type, f"Expected application/pdf, got {content_type}"
-    assert len(response.content) > 10000, "PDF content is too small to be a valid tearsheet"
+    assert (
+        "application/pdf" in content_type
+    ), f"Expected application/pdf, got {content_type}"
+    assert (
+        len(response.content) > 10000
+    ), "PDF content is too small to be a valid tearsheet"
 
     # Also test invalid ticker returns 404
     inv_resp = client.get("/api/v1/reports/tearsheet/INVALID_TICKER")
@@ -227,14 +237,18 @@ def test_cluster_labels_csv_has_89_rows() -> None:
         REPO_ROOT / "reports" / "cluster_labels.csv",
     ]
     existing_csv = next((p for p in csv_candidates if p.exists()), None)
-    assert existing_csv is not None, "cluster_labels.csv not found in data/processed/ or reports/"
+    assert (
+        existing_csv is not None
+    ), "cluster_labels.csv not found in data/processed/ or reports/"
 
     df = pd.read_csv(existing_csv)
     assert len(df) == 89, f"Expected 89 rows in cluster_labels.csv, got {len(df)}"
 
     # Excluded tickers must not appear
     for ticker in ["SBIN", "BEL", "HAL"]:
-        assert ticker not in df["company_id"].values, f"Excluded ticker {ticker} found in cluster_labels.csv"
+        assert (
+            ticker not in df["company_id"].values
+        ), f"Excluded ticker {ticker} found in cluster_labels.csv"
 
     # Confirm required columns
     expected_cols = [
@@ -261,11 +275,19 @@ def test_five_distinct_cluster_labels() -> None:
 
     df = pd.read_csv(csv_file)
     unique_labels = df["cluster_label"].unique()
-    assert len(unique_labels) == 5, f"Expected 5 distinct cluster labels, got {len(unique_labels)}: {unique_labels}"
+    assert (
+        len(unique_labels) == 5
+    ), f"Expected 5 distinct cluster labels, got {len(unique_labels)}: {unique_labels}"
 
     # Cluster IDs must span 0 to 4
     unique_ids = set(df["cluster_id"].unique())
-    assert unique_ids == {0, 1, 2, 3, 4}, f"Expected cluster IDs {0,1,2,3,4}, got {unique_ids}"
+    assert unique_ids == {
+        0,
+        1,
+        2,
+        3,
+        4,
+    }, f"Expected cluster IDs {0,1,2,3,4}, got {unique_ids}"
 
 
 def test_company_cashflow_and_valuation_endpoints(client: TestClient) -> None:
@@ -285,7 +307,9 @@ def test_company_cashflow_and_valuation_endpoints(client: TestClient) -> None:
     val_data = val_resp.json()
     assert val_data["ticker"] == "INFY"
     assert val_data["pe_ratio"] is not None
-    assert val_data["valuation_flag"] is not None and len(val_data["valuation_flag"]) > 0
+    assert (
+        val_data["valuation_flag"] is not None and len(val_data["valuation_flag"]) > 0
+    )
 
 
 def test_peers_and_sector_report_endpoints(client: TestClient) -> None:
