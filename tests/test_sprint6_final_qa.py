@@ -203,3 +203,41 @@ def test_qa_openapi_json_contains_all_16_endpoints() -> None:
     assert (
         len(paths) == 16
     ), f"Expected exactly 16 documented endpoints, found {len(paths)}"
+
+
+# ==============================================================================
+# SPRINT 6 DAY 39 DELIVERABLES VERIFICATION TESTS (D-22 & D-23)
+# ==============================================================================
+
+
+def test_qa_analyst_guide_pdf_exists_and_size() -> None:
+    """Verify analyst_guide.pdf (D-22) exists, > 100KB, and has 10-15 pages."""
+    guide_pdf = REPORTS_DIR / "analyst_guide.pdf"
+    assert guide_pdf.exists(), f"analyst_guide.pdf missing at {guide_pdf}"
+    size = guide_pdf.stat().st_size
+    assert size > 100_000, f"analyst_guide.pdf size {size} bytes is <= 100KB"
+
+    # Verify page count is within 10-15 pages
+    with open(guide_pdf, "rb") as f:
+        pdf_content = f.read()
+    import re
+
+    pages = re.findall(rb"/Type\s*/Page[\s/>]", pdf_content)
+    assert 10 <= len(pages) <= 15, f"Expected 10-15 pages, got {len(pages)}"
+
+
+def test_qa_acceptance_checklist_pdf_exists_and_size() -> None:
+    """Verify acceptance_checklist.pdf (D-23) exists, > 30KB, and has >= 2 pages."""
+    checklist_pdf = REPORTS_DIR / "acceptance_checklist.pdf"
+    assert (
+        checklist_pdf.exists()
+    ), f"acceptance_checklist.pdf missing at {checklist_pdf}"
+    size = checklist_pdf.stat().st_size
+    assert size > 30_000, f"acceptance_checklist.pdf size {size} bytes is <= 30KB"
+
+    with open(checklist_pdf, "rb") as f:
+        pdf_content = f.read()
+    import re
+
+    pages = re.findall(rb"/Type\s*/Page[\s/>]", pdf_content)
+    assert len(pages) >= 2, f"Expected at least 2 pages, got {len(pages)}"
