@@ -41,6 +41,12 @@ FEATURE_COLUMNS = [
 def load_clustering_dataset(db_path: Path | str | None = None) -> pd.DataFrame:
     """Extract latest fiscal year ratios per company, excluding SBIN, BEL, and HAL.
 
+    Args:
+        db_path (Path | str | None): Optional custom path to SQLite database.
+
+    Returns:
+        pd.DataFrame: Cleaned feature matrix across 89 non-banking companies.
+
     Handles March-ending fiscal years (91 constituents) and Siemens September-ending
     fiscal year to assemble the complete 89 non-excluded company universe.
     """
@@ -90,6 +96,12 @@ def load_clustering_dataset(db_path: Path | str | None = None) -> pd.DataFrame:
 def assign_dynamic_archetype_labels(centroids: pd.DataFrame) -> dict[int, str]:
     """Assign meaningful institutional archetype labels based on centroid metrics.
 
+    Args:
+        centroids (pd.DataFrame): DataFrame of cluster centroid coordinates across features.
+
+    Returns:
+        dict[int, str]: Mapping from cluster ID (0-4) to institutional archetype name.
+
     Evaluates relative rankings and extreme characteristics across the 5 centroids:
     1. Maximum ROE outlier -> 'High Growth & Momentum' (turnaround/hyper-ROE)
     2. Maximum OPM -> 'High Margin Infrastructure' (high-margin utilities/capex)
@@ -134,6 +146,15 @@ def run_clustering(
     random_state: int = 42,
 ) -> pd.DataFrame:
     """Execute end-to-end unsupervised KMeans clustering on 89 constituents.
+
+    Args:
+        db_path (Path | str | None): Path to SQLite database file.
+        output_path (Path | str | None): Path for output CSV file.
+        k (int): Number of KMeans clusters (default: 5).
+        random_state (int): Random seed for reproducibility (default: 42).
+
+    Returns:
+        pd.DataFrame: Clustered companies DataFrame with cluster_id and cluster_label.
 
     Steps:
     1. Load financial_ratios for latest fiscal year.

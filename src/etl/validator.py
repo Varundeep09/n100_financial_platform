@@ -59,7 +59,14 @@ class ValidationFailure:
 def validate_dq01_company_pk_uniqueness(
     companies_df: pd.DataFrame,
 ) -> list[ValidationFailure]:
-    """Verify primary key uniqueness on companies dataset (DQ-01)."""
+    """Verify primary key uniqueness on companies dataset (DQ-01).
+
+    Args:
+        companies_df (pd.DataFrame): Input DataFrame containing company master records.
+
+    Returns:
+        list[ValidationFailure]: List of detected primary key uniqueness violations.
+    """
     failures: list[ValidationFailure] = []
     if companies_df is None or companies_df.empty:
         return failures
@@ -82,7 +89,15 @@ def validate_dq01_company_pk_uniqueness(
 def validate_dq02_annual_pk_uniqueness(
     df: pd.DataFrame, table_name: str
 ) -> list[ValidationFailure]:
-    """Verify compound PK uniqueness (company_id, year) in annual financial tables (DQ-02)."""
+    """Verify compound PK uniqueness (company_id, year) in annual financial tables (DQ-02).
+
+    Args:
+        df (pd.DataFrame): Financial statement DataFrame with company_id and year columns.
+        table_name (str): Logical name of the financial statement table.
+
+    Returns:
+        list[ValidationFailure]: List of detected compound key uniqueness violations.
+    """
     failures: list[ValidationFailure] = []
     if df is None or df.empty:
         return failures
@@ -109,7 +124,16 @@ def validate_dq02_annual_pk_uniqueness(
 def validate_dq03_fk_integrity(
     df: pd.DataFrame, valid_company_ids: set[str], table_name: str
 ) -> list[ValidationFailure]:
-    """Verify that all company identifiers exist in the companies master universe (DQ-03)."""
+    """Verify that all company identifiers exist in the companies master universe (DQ-03).
+
+    Args:
+        df (pd.DataFrame): Statement DataFrame to audit for foreign key consistency.
+        valid_company_ids (set[str]): Authoritative set of master company identifiers.
+        table_name (str): Logical name of the table being audited.
+
+    Returns:
+        list[ValidationFailure]: List of orphan foreign key violations.
+    """
     failures: list[ValidationFailure] = []
     if df is None or df.empty:
         return failures
@@ -144,7 +168,15 @@ def validate_dq03_fk_integrity(
 def validate_dq04_bs_balance(
     bs_df: pd.DataFrame, tolerance: float = DQ04_BS_TOLERANCE
 ) -> list[ValidationFailure]:
-    """Validate that balance sheet total assets match total liabilities within tolerance (DQ-04)."""
+    """Validate that balance sheet total assets match total liabilities within tolerance (DQ-04).
+
+    Args:
+        bs_df (pd.DataFrame): Balance sheet dataset with total_assets and total_liabilities.
+        tolerance (float): Allowed difference tolerance in INR Crores (default: 1.0).
+
+    Returns:
+        list[ValidationFailure]: List of balance sheet out-of-balance violations.
+    """
     failures: list[ValidationFailure] = []
     if bs_df is None or bs_df.empty:
         return failures
@@ -170,7 +202,15 @@ def validate_dq04_bs_balance(
 def validate_dq05_opm_cross_check(
     pl_df: pd.DataFrame, tolerance: float = DQ05_OPM_TOLERANCE
 ) -> list[ValidationFailure]:
-    """Verify consistency between reported and calculated operating profit margins (DQ-05)."""
+    """Verify consistency between reported and calculated operating profit margins (DQ-05).
+
+    Args:
+        pl_df (pd.DataFrame): P&L dataset with sales, operating_profit, and opm_percentage.
+        tolerance (float): Allowed percentage point variance (default: 2.0).
+
+    Returns:
+        list[ValidationFailure]: List of OPM discrepancy warning records.
+    """
     failures: list[ValidationFailure] = []
     if pl_df is None or pl_df.empty:
         return failures
@@ -196,7 +236,15 @@ def validate_dq05_opm_cross_check(
 def validate_dq06_positive_sales(
     pl_df: pd.DataFrame, bank_company_ids: set[str]
 ) -> list[ValidationFailure]:
-    """Verify that non-financial companies report positive sales figures (DQ-06)."""
+    """Verify that non-financial companies report positive sales figures (DQ-06).
+
+    Args:
+        pl_df (pd.DataFrame): Profit and loss dataset with sales figures.
+        bank_company_ids (set[str]): Set of banking tickers exempt from standard sales lines.
+
+    Returns:
+        list[ValidationFailure]: List of non-positive sales violation records.
+    """
     failures: list[ValidationFailure] = []
     if pl_df is None or pl_df.empty:
         return failures
@@ -221,7 +269,15 @@ def validate_dq06_positive_sales(
 def validate_dq07_year_format(
     df: pd.DataFrame, table_name: str
 ) -> list[ValidationFailure]:
-    """Ensure all date and year fields normalise to standard 'YYYY-MM' format (DQ-07)."""
+    """Ensure all date and year fields normalise to standard 'YYYY-MM' format (DQ-07).
+
+    Args:
+        df (pd.DataFrame): Dataset containing fiscal period/year column.
+        table_name (str): Logical table name for audit logging.
+
+    Returns:
+        list[ValidationFailure]: List of invalid fiscal year format records.
+    """
     failures: list[ValidationFailure] = []
     if df is None or df.empty:
         return failures
@@ -249,7 +305,16 @@ def validate_dq07_year_format(
 def validate_dq08_ticker_format(
     df: pd.DataFrame, table_name: str, col_name: str = "company_id"
 ) -> list[ValidationFailure]:
-    """Validate ticker formatting and character constraints (DQ-08)."""
+    """Validate ticker formatting and character constraints (DQ-08).
+
+    Args:
+        df (pd.DataFrame): Dataset containing company ticker identifiers.
+        table_name (str): Logical name of the dataset.
+        col_name (str): Column name representing the ticker symbol.
+
+    Returns:
+        list[ValidationFailure]: List of malformed ticker violations.
+    """
     failures: list[ValidationFailure] = []
     if df is None or df.empty or col_name not in df.columns:
         return failures
@@ -276,7 +341,15 @@ def validate_dq08_ticker_format(
 def validate_dq09_net_cash_check(
     cf_df: pd.DataFrame, tolerance: float = DQ09_NET_CASH_TOLERANCE
 ) -> list[ValidationFailure]:
-    """Verify that net cash flow matches component cash flow sums within tolerance (DQ-09)."""
+    """Verify that net cash flow matches component cash flow sums within tolerance (DQ-09).
+
+    Args:
+        cf_df (pd.DataFrame): Cash flow statement dataset with CFO, CFI, CFF, and net_cash_flow.
+        tolerance (float): Allowed cash reconciliation tolerance in INR Crores (default: 1.0).
+
+    Returns:
+        list[ValidationFailure]: List of cash flow summation discrepancies.
+    """
     failures: list[ValidationFailure] = []
     if cf_df is None or cf_df.empty:
         return failures
@@ -302,7 +375,14 @@ def validate_dq09_net_cash_check(
 def validate_dq10_non_negative_fixed_assets(
     bs_df: pd.DataFrame,
 ) -> list[ValidationFailure]:
-    """Verify that reported fixed assets are non-negative (DQ-10)."""
+    """Verify that reported fixed assets are non-negative (DQ-10).
+
+    Args:
+        bs_df (pd.DataFrame): Balance sheet dataset with fixed_assets column.
+
+    Returns:
+        list[ValidationFailure]: List of negative fixed asset violations.
+    """
     failures: list[ValidationFailure] = []
     if bs_df is None or bs_df.empty:
         return failures
@@ -324,7 +404,15 @@ def validate_dq10_non_negative_fixed_assets(
 def validate_dq11_tax_rate_range(
     pl_df: pd.DataFrame, max_tax_pct: float = DQ11_TAX_MAX_PCT
 ) -> list[ValidationFailure]:
-    """Verify that effective tax rates fall within realistic bounds (DQ-11)."""
+    """Verify that effective tax rates fall within realistic bounds (DQ-11).
+
+    Args:
+        pl_df (pd.DataFrame): P&L statement dataset with profit_before_tax and tax_percentage.
+        max_tax_pct (float): Maximum plausible effective tax rate (default: 50.0).
+
+    Returns:
+        list[ValidationFailure]: List of anomalous tax rate records.
+    """
     failures: list[ValidationFailure] = []
     if pl_df is None or pl_df.empty:
         return failures
@@ -346,7 +434,15 @@ def validate_dq11_tax_rate_range(
 def validate_dq12_dividend_payout_cap(
     pl_df: pd.DataFrame, max_payout: float = DQ12_PAYOUT_MAX_PCT
 ) -> list[ValidationFailure]:
-    """Flag dividend payout ratios exceeding reasonable maximum thresholds (DQ-12)."""
+    """Flag dividend payout ratios exceeding reasonable maximum thresholds (DQ-12).
+
+    Args:
+        pl_df (pd.DataFrame): P&L statement dataset with dividend_payout_percentage.
+        max_payout (float): Maximum plausible dividend payout ratio (default: 150.0).
+
+    Returns:
+        list[ValidationFailure]: List of extreme dividend payout warning records.
+    """
     failures: list[ValidationFailure] = []
     if pl_df is None or pl_df.empty:
         return failures
@@ -370,7 +466,16 @@ def validate_dq13_url_validity(
     sample_size: int | None = 20,
     check_live: bool = True,
 ) -> list[ValidationFailure]:
-    """Verify reachability and HTTP status of annual report document URLs (DQ-13)."""
+    """Verify reachability and HTTP status of annual report document URLs (DQ-13).
+
+    Args:
+        docs_df (pd.DataFrame): Documents dataset containing annual report URLs.
+        sample_size (int): Number of URLs to sample for live connectivity check (default: 10).
+        check_live (bool): Flag indicating whether to perform live HTTP requests.
+
+    Returns:
+        list[ValidationFailure]: List of broken or invalid document URL records.
+    """
     failures: list[ValidationFailure] = []
     if docs_df is None or docs_df.empty:
         return failures
@@ -429,7 +534,14 @@ def validate_dq13_url_validity(
 def validate_dq14_eps_sign_consistency(
     pl_df: pd.DataFrame,
 ) -> list[ValidationFailure]:
-    """Verify mathematical sign consistency between reported net profit and EPS (DQ-14)."""
+    """Verify mathematical sign consistency between reported net profit and EPS (DQ-14).
+
+    Args:
+        pl_df (pd.DataFrame): P&L statement dataset containing net_profit and eps.
+
+    Returns:
+        list[ValidationFailure]: List of sign inconsistency violations.
+    """
     failures: list[ValidationFailure] = []
     if pl_df is None or pl_df.empty:
         return failures
@@ -462,7 +574,14 @@ def validate_dq14_eps_sign_consistency(
 def validate_dq15_strict_bs_balance(
     bs_df: pd.DataFrame,
 ) -> list[ValidationFailure]:
-    """Perform exact integer equality check on balance sheet assets and liabilities (DQ-15)."""
+    """Perform exact integer equality check on balance sheet assets and liabilities (DQ-15).
+
+    Args:
+        bs_df (pd.DataFrame): Balance sheet dataset with total_assets and total_liabilities.
+
+    Returns:
+        list[ValidationFailure]: List of exact balance sheet inequality violations.
+    """
     failures: list[ValidationFailure] = []
     if bs_df is None or bs_df.empty:
         return failures
@@ -489,7 +608,18 @@ def validate_dq16_coverage_check(
     valid_company_ids: set[str],
     min_years: int = DQ16_MIN_YEARS,
 ) -> list[ValidationFailure]:
-    """Flag companies with fewer than minimum required reporting annual periods (DQ-16)."""
+    """Flag companies with fewer than minimum required reporting annual periods (DQ-16).
+
+    Args:
+        pl_df (pd.DataFrame): Profit and loss dataset.
+        bs_df (pd.DataFrame): Balance sheet dataset.
+        cf_df (pd.DataFrame): Cash flow statement dataset.
+        valid_company_ids (set[str]): Authoritative company identifiers universe.
+        min_years (int): Minimum required historical years (default: 7).
+
+    Returns:
+        list[ValidationFailure]: List of coverage deficit records.
+    """
     failures: list[ValidationFailure] = []
     for table_name, df in [("P&L", pl_df), ("BS", bs_df), ("CF", cf_df)]:
         if df is None or df.empty:
@@ -521,7 +651,15 @@ def validate_dq16_coverage_check(
 def save_validation_failures(
     failures: list[ValidationFailure], output_path: Path | None = None
 ) -> pd.DataFrame:
-    """Persist all collected validation failure records to validation_failures.csv."""
+    """Persist all collected validation failure records to validation_failures.csv.
+
+    Args:
+        failures (list[ValidationFailure]): List of collected validation failure records.
+        output_path (Path | None): Custom path for the output CSV file.
+
+    Returns:
+        Path: Path to the generated validation failures CSV file.
+    """
     target_path = output_path or (REPORTS_DIR / "validation_failures.csv")
     target_path.parent.mkdir(parents=True, exist_ok=True)
     records = [asdict(f) for f in failures]
@@ -535,7 +673,14 @@ def save_validation_failures(
 
 
 def run_full_validation(check_live_urls: bool = False) -> pd.DataFrame:
-    """Execute all 16 Data Quality rules across the core and supporting datasets."""
+    """Execute all 16 Data Quality rules across the core and supporting datasets.
+
+    Args:
+        check_live_urls (bool): Whether to perform live network HTTP pings for DQ-13.
+
+    Returns:
+        list[ValidationFailure]: Complete list of validation failures across all 16 rules.
+    """
     logger.info("Starting complete 16-rule Data Quality validation run...")
     companies_df = load_core_file("companies.xlsx")
     pl_df = load_core_file("profitandloss.xlsx")

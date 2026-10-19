@@ -46,14 +46,33 @@ class NumberedLandscapeCanvas(canvas.Canvas):
     """Two-pass landscape canvas adding running header, footer, and page numbers."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize canvas instance with internal list of deferred page states.
+
+        Args:
+            *args (Any): Variable length argument list passed to ReportLab Canvas.
+            **kwargs (Any): Arbitrary keyword arguments passed to ReportLab Canvas.
+
+        Returns:
+            None
+        """
         super().__init__(*args, **kwargs)
         self._saved_page_states: list[dict[str, Any]] = []
 
     def showPage(self) -> None:
+        """Record current page dictionary state for two-pass decoration rendering.
+
+        Returns:
+            None
+        """
         self._saved_page_states.append(dict(self.__dict__))
         self._startPage()
 
     def save(self) -> None:
+        """Render deferred running headers, footers, and page numbers across all pages.
+
+        Returns:
+            None
+        """
         num_pages = len(self._saved_page_states)
         for state in self._saved_page_states:
             self.__dict__.update(state)
@@ -62,6 +81,14 @@ class NumberedLandscapeCanvas(canvas.Canvas):
         super().save()
 
     def draw_page_decorations(self, page_count: int) -> None:
+        """Draw running headers, footers, accent rules, and total page count string.
+
+        Args:
+            page_count (int): Total number of pages accumulated in two-pass rendering.
+
+        Returns:
+            None
+        """
         self.saveState()
         self.setFont("Helvetica", 7.5)
         self.setFillColor(colors.HexColor("#64748B"))
@@ -90,7 +117,14 @@ class NumberedLandscapeCanvas(canvas.Canvas):
 
 
 def load_portfolio_dataset(db_path: Path | str = DEFAULT_DB_PATH) -> pd.DataFrame:
-    """Load all 92 companies joined with fundamental ratios, screener presets, and valuation flags."""
+    """Load all 92 companies joined with fundamental ratios, screener presets, and valuation flags.
+
+    Args:
+        db_path (Path | str): Path to SQLite database containing financial intelligence tables.
+
+    Returns:
+        pd.DataFrame: Master portfolio DataFrame with composite scores, valuations, and metrics.
+    """
     conn = sqlite3.connect(str(db_path))
 
     query = """
@@ -151,6 +185,14 @@ def load_portfolio_dataset(db_path: Path | str = DEFAULT_DB_PATH) -> pd.DataFram
             df_scr = pd.read_excel(screener_path, sheet_name="Summary")
 
             def get_presets(row: pd.Series) -> str:
+                """Extract names of matched screener presets for a company record.
+
+                Args:
+                    row (pd.Series): Single company row containing preset boolean flags.
+
+                Returns:
+                    str: Comma-separated preset names or 'None'.
+                """
                 matches = [name for col, name in preset_cols if row.get(col) is True]
                 return ", ".join(matches) if matches else "None"
 
@@ -196,7 +238,14 @@ def load_portfolio_dataset(db_path: Path | str = DEFAULT_DB_PATH) -> pd.DataFram
 
 
 def generate_universe_charts(df: pd.DataFrame) -> tuple[RLImage, RLImage]:
-    """Generate high-resolution institutional summary charts for universe overview."""
+    """Generate high-resolution institutional summary charts for universe overview.
+
+    Args:
+        df (pd.DataFrame): Master portfolio dataset DataFrame.
+
+    Returns:
+        tuple[RLImage, RLImage]: Tuple of ReportLab Image flowables for sector bar and scatter charts.
+    """
     # Chart 1: Sector Aggregate Market Cap and Company Count
     sec_agg = (
         df.groupby("broad_sector")
@@ -404,6 +453,15 @@ def generate_portfolio_summary_pdf(
 
     # Universe Summary Stats Cards (1 row x 6 columns)
     def make_kpi_cell(label: str, value: str) -> list[Any]:
+        """Format an individual KPI label and metric block for executive summary cards.
+
+        Args:
+            label (str): Title or metric name.
+            value (str): Formatted numerical or percentage value.
+
+        Returns:
+            list[Any]: Flowable paragraphs and spacers representing the KPI cell.
+        """
         return [
             Paragraph(
                 f"<font size='6' color='#64748B'><b>{label}</b></font>", cell_center

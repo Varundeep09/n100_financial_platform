@@ -1,4 +1,4 @@
-﻿"""Peer comparison and intra-group percentile analytics engine.
+"""Peer comparison and intra-group percentile analytics engine.
 
 Sprint 3, Day 17: Peer Analytics Module
 Ingests 11 predefined peer groups (56 mapped companies), calculates

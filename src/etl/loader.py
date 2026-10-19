@@ -91,7 +91,15 @@ TICKER_ALIASES: dict[str, str] = {
 
 
 def log_parse_failure(raw_value: Any, field_name: str = "year") -> None:
-    """Log an unparseable raw value to data/processed/parse_failures.csv."""
+    """Log an unparseable raw value to data/processed/parse_failures.csv.
+
+    Args:
+        raw_value (Any): Unparseable input value encountered during ingestion.
+        field_name (str): Logical column or attribute name (default: "year").
+
+    Returns:
+        None.
+    """
     try:
         PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
         failure_file = PROCESSED_DIR / "parse_failures.csv"
@@ -106,7 +114,14 @@ def log_parse_failure(raw_value: Any, field_name: str = "year") -> None:
 
 
 def normalize_year(value: Any) -> str:
-    """Standardise any valid fiscal year or date representation to 'YYYY-MM' format."""
+    """Standardise any valid fiscal year or date representation to 'YYYY-MM' format.
+
+    Args:
+        value (Any): Raw fiscal year, date, string, or numeric value to normalize.
+
+    Returns:
+        str: Normalized year string in 'YYYY-MM' format, or PARSE_ERROR if unparseable.
+    """
     if value is None:
         log_parse_failure(value, field_name="year")
         return PARSE_ERROR
@@ -187,7 +202,14 @@ def normalize_year(value: Any) -> str:
 
 
 def normalize_ticker(value: Any) -> str | None:
-    """Clean and validate NSE ticker symbol according to DQ-08 specifications."""
+    """Clean and validate NSE ticker symbol according to DQ-08 specifications.
+
+    Args:
+        value (Any): Raw ticker symbol or company identifier.
+
+    Returns:
+        str | None: Cleaned uppercase ticker symbol, or None if invalid or missing.
+    """
     if value is None:
         return None
     if isinstance(value, float) and np.isnan(value):
@@ -202,7 +224,14 @@ def normalize_ticker(value: Any) -> str | None:
 
 
 def load_core_file(filename: str) -> pd.DataFrame | None:
-    """Read a core dataset Excel file with title row skipped (header=1)."""
+    """Read a core dataset Excel file with title row skipped (header=1).
+
+    Args:
+        filename (str): Name of the core Excel workbook in data/raw/.
+
+    Returns:
+        pd.DataFrame | None: Loaded DataFrame, or None if file cannot be read.
+    """
     try:
         file_path = RAW_DIR / filename
         logger.debug(f"Reading core file from {file_path}")
@@ -213,7 +242,14 @@ def load_core_file(filename: str) -> pd.DataFrame | None:
 
 
 def load_supporting_file(filename: str) -> pd.DataFrame | None:
-    """Read a supplementary dataset Excel file with standard header (header=0)."""
+    """Read a supplementary dataset Excel file with standard header (header=0).
+
+    Args:
+        filename (str): Name of the supplementary Excel workbook in data/supporting/.
+
+    Returns:
+        pd.DataFrame | None: Loaded DataFrame, or None if file cannot be read.
+    """
     try:
         file_path = SUPPORTING_DIR / filename
         logger.debug(f"Reading supporting file from {file_path}")
@@ -224,7 +260,11 @@ def load_supporting_file(filename: str) -> pd.DataFrame | None:
 
 
 def main() -> None:
-    """Execute Day 2 loader verification on all core and supporting source files."""
+    """Execute Day 2 loader verification on all core and supporting source files.
+
+    Returns:
+        None.
+    """
     logger.info("Starting Excel loader verification...")
     all_ok = True
     for label, folder, files in [

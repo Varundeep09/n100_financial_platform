@@ -94,7 +94,14 @@ CREATE INDEX IF NOT EXISTS idx_fr_extreme_magnitude ON financial_ratios(extreme_
 
 
 def ensure_financial_ratios_schema(conn: sqlite3.Connection) -> None:
-    """Execute DDL to ensure financial_ratios table and indexes exist."""
+    """Execute DDL to ensure financial_ratios table and indexes exist.
+
+    Args:
+        conn (sqlite3.Connection): Active SQLite database connection.
+
+    Returns:
+        None.
+    """
     cursor = conn.cursor()
     cursor.execute("PRAGMA table_info(financial_ratios);")
     cols = [r[1] for r in cursor.fetchall()]
@@ -108,7 +115,14 @@ def ensure_financial_ratios_schema(conn: sqlite3.Connection) -> None:
 
 
 def get_all_company_years_data(conn: sqlite3.Connection) -> pd.DataFrame:
-    """Extract unified company-year dataset joining P&L, Balance Sheet, Cash Flow, and Master metadata."""
+    """Extract unified company-year dataset joining P&L, Balance Sheet, Cash Flow, and Master metadata.
+
+    Args:
+        conn (sqlite3.Connection): Active SQLite database connection.
+
+    Returns:
+        pd.DataFrame: Joined raw multi-year financial statements across P&L, BS, and CF.
+    """
     query = """
     WITH all_company_years AS (
         SELECT company_id, year FROM profitandloss
@@ -161,7 +175,14 @@ def get_all_company_years_data(conn: sqlite3.Connection) -> pd.DataFrame:
 
 
 def build_financial_ratios_dataframe(raw_df: pd.DataFrame) -> pd.DataFrame:
-    """Run all 3 KPI engines and assemble the final 47-column financial_ratios dataset."""
+    """Run all 3 KPI engines and assemble the final 47-column financial_ratios dataset.
+
+    Args:
+        raw_df (pd.DataFrame): Unified raw financial statements DataFrame.
+
+    Returns:
+        pd.DataFrame: Enriched DataFrame populated with all 47 KPI ratio columns and flags.
+    """
     logger.info("Executing profitability, leverage, CAGR, and cash flow engines...")
     df_ratios = calculate_profitability_metrics(raw_df)
     df_cagr = calculate_cagr_metrics(raw_df)
@@ -306,7 +327,14 @@ def build_financial_ratios_dataframe(raw_df: pd.DataFrame) -> pd.DataFrame:
 def populate_financial_ratios(
     db_path: Path = DB_PATH,
 ) -> pd.DataFrame:
-    """Compute and populate financial_ratios table in SQLite database."""
+    """Compute and populate financial_ratios table in SQLite database.
+
+    Args:
+        db_path (Path): Path to SQLite database file.
+
+    Returns:
+        pd.DataFrame: Final populated financial ratios DataFrame written to SQLite.
+    """
     if not db_path.exists():
         raise FileNotFoundError(f"Database not found at {db_path}")
 

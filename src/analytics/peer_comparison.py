@@ -1,4 +1,4 @@
-﻿"""Peer comparison Excel workbook generator with 3-tier conditional color scales.
+"""Peer comparison Excel workbook generator with 3-tier conditional color scales.
 
 Sprint 3, Day 19: Peer Comparison Excel Workbook
 Generates peer_comparison.xlsx with 11 intra-peer group sheets and a master 92-company
@@ -12,6 +12,7 @@ import logging
 import shutil
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 import openpyxl
 import pandas as pd
@@ -61,9 +62,18 @@ COLOR_RED = "F8696B"  # Bottom performer
 
 
 def _style_header_cell(
-    cell, is_benchmark: bool = False, is_metric_col: bool = False
+    cell: Any, is_benchmark: bool = False, is_metric_col: bool = False
 ) -> None:
-    """Apply styling to header row cell."""
+    """Apply styling to header row cell.
+
+    Args:
+        cell (Any): OpenPyXL cell instance to format.
+        is_benchmark (bool): Whether cell represents designated peer benchmark column.
+        is_metric_col (bool): Whether cell represents metric name leading column.
+
+    Returns:
+        None
+    """
     if is_metric_col:
         cell.fill = PatternFill(
             start_color="1E3A8A", end_color="1E3A8A", fill_type="solid"
@@ -84,8 +94,18 @@ def _style_header_cell(
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
 
-def _style_section_banner(ws, row_idx: int, title: str, max_col: int) -> None:
-    """Format a full-width section header banner."""
+def _style_section_banner(ws: Any, row_idx: int, title: str, max_col: int) -> None:
+    """Format a full-width section header banner.
+
+    Args:
+        ws (Any): OpenPyXL worksheet instance.
+        row_idx (int): Row index where banner begins.
+        title (str): Banner title string.
+        max_col (int): Maximum column index to span.
+
+    Returns:
+        None
+    """
     cell = ws.cell(row=row_idx, column=1, value=title)
     cell.fill = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
     cell.font = Font(name="Calibri", size=10, bold=True, color="F8FAFC")

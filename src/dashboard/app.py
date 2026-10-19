@@ -194,7 +194,16 @@ def load_query(
     params: tuple[Any, ...] = (),
     db_path: Path | str = DEFAULT_DB_PATH,
 ) -> pd.DataFrame:
-    """Execute a read query against the SQLite database and return a DataFrame."""
+    """Execute a read query against the SQLite database and return a DataFrame.
+
+    Args:
+        query (str): SQL SELECT query string.
+        params (tuple[Any, ...]): Query parameters tuple for safe parameter binding.
+        db_path (Path | str): Path to SQLite database file.
+
+    Returns:
+        pd.DataFrame: Query results as a pandas DataFrame, or empty DataFrame on failure.
+    """
     resolved_db = Path(db_path)
     if not resolved_db.exists():
         fallback = Path(__file__).resolve().parents[2] / "db" / "nifty100.db"
@@ -214,7 +223,11 @@ def load_query(
 
 @st.cache_data(ttl=600)
 def load_screener_summary() -> pd.DataFrame:
-    """Load the pre-computed screener summary with composite scores and preset matches."""
+    """Load the pre-computed screener summary with composite scores and preset matches.
+
+    Returns:
+        pd.DataFrame: Universe fundamental screener summary records.
+    """
     resolved_screener = SCREENER_OUTPUT_PATH
     if not resolved_screener.exists():
         fallback = Path(__file__).resolve().parents[2] / "screener_output.xlsx"
@@ -237,7 +250,11 @@ def load_screener_summary() -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_universe_snapshot() -> pd.DataFrame:
-    """Load latest snapshot ratios joined with company metadata and composite scores."""
+    """Load latest snapshot ratios joined with company metadata and composite scores.
+
+    Returns:
+        pd.DataFrame: Master universe financial snapshot DataFrame across all 92 companies.
+    """
     sql = """
         SELECT 
             c.id as company_id,
@@ -308,7 +325,14 @@ def load_universe_snapshot() -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_company_peer_info(company_id: str) -> dict[str, Any]:
-    """Load peer group metadata and classifications for a specific company."""
+    """Load peer group metadata and classifications for a specific company.
+
+    Args:
+        company_id (str): NSE ticker symbol of the focus company.
+
+    Returns:
+        dict[str, Any]: Peer group constituent information and benchmark designation.
+    """
     sql = """
         SELECT pg.peer_group_name, pg.is_benchmark, pp.metric_name, pp.classification, pp.percentile_rank
         FROM peer_groups pg
@@ -336,7 +360,14 @@ def load_company_peer_info(company_id: str) -> dict[str, Any]:
 
 @st.cache_data(ttl=600)
 def load_peer_group_metrics(peer_group_name: str) -> pd.DataFrame:
-    """Load all 20 metrics and percentiles for a peer group."""
+    """Load all 20 metrics and percentiles for a peer group.
+
+    Args:
+        peer_group_name (str): Designated peer group identifier name.
+
+    Returns:
+        pd.DataFrame: Latest metrics and percentile ranks for all members of the peer group.
+    """
     sql = """
         SELECT 
             pp.company_id, 
@@ -358,7 +389,11 @@ def load_peer_group_metrics(peer_group_name: str) -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_capital_allocation_patterns() -> pd.DataFrame:
-    """Load capital allocation pattern history and filter to latest year per company."""
+    """Load capital allocation pattern history and filter to latest year per company.
+
+    Returns:
+        pd.DataFrame: Latest capital allocation classifications and CFO/CapEx/FCF metrics.
+    """
     resolved_path = CAPITAL_ALLOCATION_PATH
     if not resolved_path.exists():
         fallback = (
@@ -384,7 +419,14 @@ def load_capital_allocation_patterns() -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_company_cashflow_history(company_id: str) -> pd.DataFrame:
-    """Load 10-year historical cashflow breakdown for a specific company."""
+    """Load 10-year historical cashflow breakdown for a specific company.
+
+    Args:
+        company_id (str): NSE ticker symbol.
+
+    Returns:
+        pd.DataFrame: Chronological cash flow trajectory across operating, investing, and financing.
+    """
     sql = """
         SELECT year, operating_activity, investing_activity, financing_activity, net_cash_flow
         FROM cashflow
@@ -396,7 +438,11 @@ def load_company_cashflow_history(company_id: str) -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_peer_classifications_by_sector() -> pd.DataFrame:
-    """Load distribution of Best in Class, In Line, and Watch List by broad sector."""
+    """Load distribution of Best in Class, In Line, and Watch List by broad sector.
+
+    Returns:
+        pd.DataFrame: Sector-aggregated peer classification summary counts.
+    """
     sql = """
         SELECT pp.company_id, s.broad_sector, pp.classification, COUNT(*) as cnt
         FROM peer_percentiles pp
@@ -408,7 +454,11 @@ def load_peer_classifications_by_sector() -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_historical_stress_records() -> pd.DataFrame:
-    """Load all records where ICR < 1.5 (icr_risk_flag=1) and FCF < 0."""
+    """Load all records where ICR < 1.5 (icr_risk_flag=1) and FCF < 0.
+
+    Returns:
+        pd.DataFrame: Financial distress records showing negative free cash flow and low ICR.
+    """
     sql = """
         SELECT 
             fr.company_id,
@@ -429,7 +479,14 @@ def load_historical_stress_records() -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_company_pl_history(company_id: str) -> pd.DataFrame:
-    """Load 10-year P&L and cashflow trajectory for a specific company."""
+    """Load 10-year P&L and cashflow trajectory for a specific company.
+
+    Args:
+        company_id (str): NSE ticker symbol.
+
+    Returns:
+        pd.DataFrame: 10-year historical trajectory covering Revenue, EBITDA, PAT, and CFO.
+    """
     sql = """
         SELECT pl.year, pl.sales, pl.operating_profit, pl.net_profit, pl.eps, pl.opm_percentage,
                cf.operating_activity as cfo
@@ -443,7 +500,11 @@ def load_company_pl_history(company_id: str) -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_valuation_dataset() -> pd.DataFrame:
-    """Load universe valuation metrics calculated by valuation engine."""
+    """Load universe valuation metrics calculated by valuation engine.
+
+    Returns:
+        pd.DataFrame: Universe valuation multiples (PE, PB, EV/EBITDA, DCF) and flags.
+    """
     try:
         return calculate_valuation_metrics()
     except (OSError, ValueError, KeyError, sqlite3.Error) as exc:
@@ -453,7 +514,14 @@ def load_valuation_dataset() -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_company_documents(company_id: str) -> pd.DataFrame:
-    """Load filing URLs and metadata from documents table for a company."""
+    """Load filing URLs and metadata from documents table for a company.
+
+    Args:
+        company_id (str): NSE ticker symbol.
+
+    Returns:
+        pd.DataFrame: Annual reports and filings metadata for the company.
+    """
     sql = """
         SELECT year, annual_report
         FROM documents
@@ -471,7 +539,15 @@ def load_company_documents(company_id: str) -> pd.DataFrame:
 def render_sidebar(
     universe_df: pd.DataFrame,
 ) -> tuple[str, str, dict[str, float], str, str, str]:
-    """Render sidebar branding, screen navigation, and screen-specific controls."""
+    """Render sidebar branding, screen navigation, and screen-specific controls.
+
+    Args:
+        universe_df (pd.DataFrame): Master universe financial snapshot DataFrame.
+
+    Returns:
+        tuple[str, str, dict[str, float], str, str, str]: Tuple of active screen,
+            selected ticker, screener filter thresholds, sector, peer group, and preset.
+    """
     st.sidebar.markdown(
         """
         <div style="text-align: center; padding-bottom: 12px;">
@@ -716,7 +792,14 @@ def render_sidebar(
 
 
 def render_home_screen(universe_df: pd.DataFrame) -> None:
-    """SCREEN 1: Home / Overview dashboard."""
+    """Render Screen 1: Home / Universe Overview dashboard.
+
+    Args:
+        universe_df (pd.DataFrame): Universe financial snapshot DataFrame.
+
+    Returns:
+        None
+    """
     st.title("📈 Executive Overview & Universe Health")
     st.markdown(
         "Institutional analytics covering **92 NSE Nifty 100 constituents** across fundamentals, "
@@ -867,7 +950,15 @@ def render_home_screen(universe_df: pd.DataFrame) -> None:
 
 
 def render_company_profile_screen(universe_df: pd.DataFrame, ticker: str) -> None:
-    """SCREEN 2: Company Profile Tearsheet."""
+    """Render Screen 2: Company Profile Tearsheet.
+
+    Args:
+        universe_df (pd.DataFrame): Universe financial snapshot DataFrame.
+        ticker (str): Selected NSE company ticker.
+
+    Returns:
+        None
+    """
     comp_series = universe_df[universe_df["company_id"] == ticker]
     if comp_series.empty:
         st.error(f"Company '{ticker}' not found in universe snapshot.")
@@ -1050,7 +1141,15 @@ def render_company_profile_screen(universe_df: pd.DataFrame, ticker: str) -> Non
 def render_financial_screener_screen(
     universe_df: pd.DataFrame, thresholds: dict[str, float]
 ) -> None:
-    """SCREEN 3: Multi-Criteria Financial Screener Screen."""
+    """Render Screen 3: Multi-Criteria Financial Screener Screen.
+
+    Args:
+        universe_df (pd.DataFrame): Universe financial snapshot DataFrame.
+        thresholds (dict[str, float]): Filter cutoffs for ROE, D/E, FCF, OPM, PE, and ICR.
+
+    Returns:
+        None
+    """
     st.title("🔍 Multi-Criteria Fundamental Screener")
     st.markdown(
         "Filter and rank all 92 Nifty 100 companies using 10 custom institutional thresholds "
@@ -1228,7 +1327,14 @@ def render_financial_screener_screen(
 
 
 def render_peer_comparison_screen(peer_group_name: str) -> None:
-    """SCREEN 4: Peer Comparison Screen with Heatmap & Benchmark Gap Analysis."""
+    """Render Screen 4: Peer Comparison Screen with Heatmap & Benchmark Gap Analysis.
+
+    Args:
+        peer_group_name (str): Selected peer group identifier name.
+
+    Returns:
+        None
+    """
     st.title(f"👥 Peer Group Comparison: {peer_group_name}")
     st.markdown(
         f"Comparative matrix and intra-industry benchmarking across all member companies in the **`{peer_group_name}`** cluster."
@@ -1371,7 +1477,15 @@ def render_peer_comparison_screen(peer_group_name: str) -> None:
 def render_sector_analytics_screen(
     universe_df: pd.DataFrame, selected_sector: str
 ) -> None:
-    """SCREEN 5: Sector Analytics & Cross-Industry Benchmarking."""
+    """Render Screen 5: Sector Analytics & Cross-Industry Benchmarking.
+
+    Args:
+        universe_df (pd.DataFrame): Universe financial snapshot DataFrame.
+        selected_sector (str): Selected broad sector classification.
+
+    Returns:
+        None
+    """
     st.title("📊 Sector Analytics & Cross-Industry Benchmarking")
     st.markdown(
         "Macro sector performance summaries, cross-industry fundamental benchmarks, "
@@ -1659,7 +1773,15 @@ def render_sector_analytics_screen(
 def render_cashflow_intelligence_screen(
     universe_df: pd.DataFrame, selected_ticker: str
 ) -> None:
-    """SCREEN 6: Cash Flow Intelligence & Capital Allocation Archetypes."""
+    """Render Screen 6: Cash Flow Intelligence & Capital Allocation Archetypes.
+
+    Args:
+        universe_df (pd.DataFrame): Universe financial snapshot DataFrame.
+        selected_ticker (str): Selected NSE company ticker.
+
+    Returns:
+        None
+    """
     st.title("💰 Cash Flow Intelligence & Capital Allocation")
     st.markdown(
         "Institutional cash quality diagnostics, 8-archetype capital allocation distributions, "
@@ -1985,7 +2107,15 @@ def render_cashflow_intelligence_screen(
 
 
 def render_trend_growth_screen(universe_df: pd.DataFrame, selected_ticker: str) -> None:
-    """SCREEN 7: 10-Year Trend & Growth Trajectory Analysis."""
+    """Render Screen 7: 10-Year Trend & Growth Trajectory Analysis.
+
+    Args:
+        universe_df (pd.DataFrame): Universe financial snapshot DataFrame.
+        selected_ticker (str): Selected NSE company ticker.
+
+    Returns:
+        None
+    """
     st.title("📈 10-Year Trend & Growth Trajectory Analysis")
     st.markdown(
         "Historical trajectory visualizer, compound annual growth rate (CAGR) decomp, "
@@ -2040,6 +2170,15 @@ def render_trend_growth_screen(universe_df: pd.DataFrame, selected_ticker: str) 
 
     # 3-year and 5-year CAGR calculations
     def get_cagr(series: pd.Series, periods: int) -> float | None:
+        """Compute compound annual growth rate across a chronological series.
+
+        Args:
+            series (pd.Series): Historical financial series ordered chronologically.
+            periods (int): Horizon period in years (e.g., 3, 5).
+
+        Returns:
+            float | None: Annualized CAGR percentage, or None if insufficient history.
+        """
         if len(series) >= periods + 1:
             start_v = series.iloc[-(periods + 1)]
             end_v = series.iloc[-1]
@@ -2238,7 +2377,15 @@ def render_trend_growth_screen(universe_df: pd.DataFrame, selected_ticker: str) 
 
 
 def render_valuation_screen(universe_df: pd.DataFrame, selected_ticker: str) -> None:
-    """SCREEN 8: Valuation & Market Multiples Module."""
+    """Render Screen 8: Valuation & Market Multiples Module.
+
+    Args:
+        universe_df (pd.DataFrame): Universe financial snapshot DataFrame.
+        selected_ticker (str): Selected NSE company ticker.
+
+    Returns:
+        None
+    """
     st.title("💎 Valuation & Market Multiples Intelligence")
     st.markdown(
         "Quantitative market capitalization multiples (P/E, P/B, EV/EBITDA), 5-year historical benchmarks, "
@@ -2555,7 +2702,11 @@ def render_valuation_screen(universe_df: pd.DataFrame, selected_ticker: str) -> 
 
 
 def main() -> None:
-    """Main application router."""
+    """Main application router for Streamlit interface.
+
+    Returns:
+        None
+    """
     st.set_page_config(
         page_title="Nifty 100 Financial Intelligence Platform",
         page_icon="📈",

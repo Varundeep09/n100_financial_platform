@@ -64,10 +64,25 @@ class MetricResult(dict):
     """Versatile metric container supporting dict key, attribute, and tuple unpacking access."""
 
     def __init__(self, value: Any, label: Any, **kwargs: Any) -> None:
+        """Initialize metric container with numeric value, qualitative label, and optional metadata.
+
+        Args:
+            value (Any): Calculated quantitative value or None.
+            label (Any): Qualitative assessment label or None.
+            **kwargs (Any): Additional arbitrary metric properties.
+
+        Returns:
+            None
+        """
         super().__init__(value=value, label=label, **kwargs)
         self.__dict__ = self
 
-    def __iter__(self):
+    def __iter__(self) -> Any:
+        """Support 2-tuple unpacking into value and label.
+
+        Returns:
+            Any: Iterator yielding (value, label) pair.
+        """
         return iter((self["value"], self["label"]))
 
 
@@ -82,6 +97,18 @@ class CapitalAllocationResult(dict):
         pattern_label: str,
         **kwargs: Any,
     ) -> None:
+        """Initialize capital allocation result with cash flow signs and pattern archetype.
+
+        Args:
+            cfo_sign (str): Cash from Operations sign ('+' or '-').
+            cfi_sign (str): Cash from Investing sign ('+' or '-').
+            cff_sign (str): Cash from Financing sign ('+' or '-').
+            pattern_label (str): 8-pattern archetype classification name.
+            **kwargs (Any): Additional optional diagnostic attributes.
+
+        Returns:
+            None
+        """
         super().__init__(
             cfo_sign=cfo_sign,
             cfi_sign=cfi_sign,
@@ -91,7 +118,12 @@ class CapitalAllocationResult(dict):
         )
         self.__dict__ = self
 
-    def __iter__(self):
+    def __iter__(self) -> Any:
+        """Support 4-tuple unpacking into signs and pattern label.
+
+        Returns:
+            Any: Iterator yielding the four classification attributes in sequence.
+        """
         return iter(
             (
                 self["cfo_sign"],
@@ -103,7 +135,14 @@ class CapitalAllocationResult(dict):
 
 
 def _extract_sign(val: Any) -> str | None:
-    """Extract + or - sign safely from numeric or string input."""
+    """Extract + or - sign safely from numeric or string input.
+
+    Args:
+        val (Any): Input numeric value or indicator sign string.
+
+    Returns:
+        str | None: Sign character ('+', '-', '?') or None if undetermined.
+    """
     if val is None:
         return None
     if isinstance(val, str):
@@ -130,8 +169,12 @@ def compute_fcf(
 ) -> float | None:
     """Calculate Free Cash Flow (FCF) as operating_activity + investing_activity.
 
-    Negative values are allowed and meaningful (preserved, not nulled).
-    Returns None if either input is None or NaN.
+    Args:
+        operating_activity (float | None): Cash flow from operating activities (CFO) in INR Crores.
+        investing_activity (float | None): Cash flow from investing activities (CFI) in INR Crores.
+
+    Returns:
+        float | None: Free cash flow in INR Crores, or None if either input is missing or NaN.
     """
     if operating_activity is None or investing_activity is None:
         return None
@@ -154,21 +197,16 @@ def compute_cfo_quality_score(
 ) -> MetricResult:
     """Calculate CFO Quality Score as trailing 5-year average of CFO / PAT.
 
-    Thresholds:
-      - > 1.0     -> 'High Quality'
-      - 0.5 - 1.0 -> 'Moderate'
-      - < 0.5     -> 'Accrual Risk'
+    Args:
+        cfo_or_history (Any): Trailing 5-year CFO values or scalar CFO.
+        pat_history (Any): Trailing 5-year PAT values (net profit).
+        company_id (str | None): NSE ticker identifier.
+        broad_sector (str | None): Macro sector name.
+        is_financial (bool): Flag indicating financial institution status.
 
-    Financials Sector Carve-Out:
-      - For lending institutions (IRFC, RECLTD, PFC, and commercial banks), operating
-        cash flows structurally include loan disbursements/advances as cash outflows.
-        Evaluating CFO / PAT as 'Accrual Risk' is economically misleading.
-      - Financials companies return value=None, label='Not Applicable (Financials Sector)'.
-
-    Returns (None, None) if:
-      - Fewer than 5 periods exist
-      - PAT == 0 for any period in the 5-year window
-      - Any period has missing/NaN data
+    Returns:
+        MetricResult: Metric container with 'value' (float or None) and 'label'
+            ('High Quality', 'Moderate', 'Accrual Risk', or 'Not Applicable (Financials Sector)').
     """
     if (
         is_financial
@@ -242,10 +280,13 @@ def compute_capex_intensity(
 ) -> MetricResult:
     """Calculate CapEx Intensity as abs(investing_activity) / sales * 100.
 
-    Thresholds:
-      - < 3%      -> 'Asset Light'
-      - 3% - 8%   -> 'Moderate'
-      - > 8%      -> 'Capital Intensive'
+    Args:
+        investing_activity (float | None): Investing cash outflow in INR Crores.
+        sales (float | None): Top-line revenue in INR Crores.
+
+    Returns:
+        MetricResult: Metric container with 'value' (percentage) and 'label'
+            ('Asset Light', 'Moderate', or 'Capital Intensive').
     """
     if investing_activity is None or sales is None:
         return MetricResult(value=None, label=None)
@@ -276,9 +317,14 @@ def compute_fcf_conversion(
 ) -> MetricResult:
     """Calculate FCF Conversion Rate as FCF / operating_profit * 100.
 
-    Returns None with 'Not Applicable (Banking Template)' for banking-template companies.
-    Returns None if operating_profit is None or 0.
-    Preserves negative conversion rates when FCF is negative.
+    Args:
+        fcf (float | None): Free cash flow in INR Crores.
+        operating_profit (float | None): Operating profit in INR Crores.
+        company_id (str | None): NSE ticker identifier.
+        is_banking_template (bool): Flag indicating banking statement template structure.
+
+    Returns:
+        MetricResult: Metric container with 'value' (percentage or None) and 'label'.
     """
     if is_banking_template or (company_id and company_id in BANKING_TEMPLATE_COMPANIES):
         return MetricResult(value=None, label="Not Applicable (Banking Template)")
@@ -314,15 +360,16 @@ def classify_capital_allocation(
 ) -> CapitalAllocationResult:
     """Classify company-year into one of 8 capital allocation patterns based on signs of (CFO, CFI, CFF).
 
-    Patterns:
-      - (+, -, -) & High Quality CFO -> 'Shareholder Returns'
-      - (+, -, -) otherwise          -> 'Reinvestor'
-      - (+, +, -)                    -> 'Liquidating Assets'
-      - (-, +, +) or (-, +, -)       -> 'Distress Signal'
-      - (-, -, +)                    -> 'Growth Funded by Debt'
-      - (+, +, +)                    -> 'Cash Accumulator'
-      - (-, -, -)                    -> 'Pre-Revenue'
-      - (+, -, +)                    -> 'Mixed'
+    Args:
+        cfo (Any): Operating cash flow value or sign.
+        cfi (Any): Investing cash flow value or sign.
+        cff (Any): Financing cash flow value or sign.
+        cfo_quality_label (str | None): Diagnostic label from CFO quality calculation.
+        cfo_quality_score (float | None): Numeric CFO quality score.
+
+    Returns:
+        CapitalAllocationResult: Classified pattern result with cfo_sign, cfi_sign,
+            cff_sign, and pattern_label (e.g., 'Shareholder Returns', 'Reinvestor', 'Distress Signal').
     """
     s_cfo = _extract_sign(cfo)
     s_cfi = _extract_sign(cfi)
@@ -373,7 +420,15 @@ def get_cashflow_data(
     company_id: str | None = None,
     db_path: Path = DB_PATH,
 ) -> pd.DataFrame:
-    """Load joined cashflow and profitandloss data from database."""
+    """Load joined cashflow and profitandloss data from database.
+
+    Args:
+        company_id (str | None): Optional specific NSE ticker symbol to filter on.
+        db_path (Path): Path to SQLite database file.
+
+    Returns:
+        pd.DataFrame: Joined records containing cashflow and profitandloss line items.
+    """
     if not db_path.exists():
         raise FileNotFoundError(f"Database not found at {db_path}")
 
@@ -412,7 +467,15 @@ def get_cashflow_data(
 
 
 def calculate_cashflow_kpis(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute all cash flow KPIs and capital allocation classification across joined DataFrame."""
+    """Compute all cash flow KPIs and capital allocation classification across joined DataFrame.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing joined cashflow and P&L statements.
+
+    Returns:
+        pd.DataFrame: Augmented DataFrame populated with FCF, CFO quality, CapEx intensity,
+            FCF conversion, and 8-pattern capital allocation classifications.
+    """
     if df.empty:
         return pd.DataFrame()
 
@@ -582,7 +645,15 @@ def generate_capital_allocation_csv(
     output_path: Path | None = None,
     db_path: Path = DB_PATH,
 ) -> Path:
-    """Generate capital_allocation.csv with columns: company_id, year, cfo_sign, cfi_sign, cff_sign, pattern_label."""
+    """Generate capital_allocation.csv with columns: company_id, year, cfo_sign, cfi_sign, cff_sign, pattern_label.
+
+    Args:
+        output_path (Path | None): Custom target path for the generated CSV (default: data/processed/capital_allocation.csv).
+        db_path (Path): Path to SQLite database file.
+
+    Returns:
+        Path: Path to the generated CSV file.
+    """
     if output_path is None:
         output_path = REPO_ROOT / "data" / "processed" / "capital_allocation.csv"
 

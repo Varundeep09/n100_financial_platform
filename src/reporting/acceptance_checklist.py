@@ -46,14 +46,33 @@ class NumberedCanvas(canvas.Canvas):
     """Two-pass canvas adding running header, footer, and dynamic page counts."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize canvas instance with internal list of deferred page states.
+
+        Args:
+            *args (Any): Variable length argument list passed to ReportLab Canvas.
+            **kwargs (Any): Arbitrary keyword arguments passed to ReportLab Canvas.
+
+        Returns:
+            None
+        """
         super().__init__(*args, **kwargs)
         self._saved_page_states: list[dict[str, Any]] = []
 
     def showPage(self) -> None:
+        """Record current page dictionary state for two-pass decoration rendering.
+
+        Returns:
+            None
+        """
         self._saved_page_states.append(dict(self.__dict__))
         self._startPage()
 
     def save(self) -> None:
+        """Render deferred running headers, footers, and page numbers across all pages.
+
+        Returns:
+            None
+        """
         num_pages = len(self._saved_page_states)
         for state in self._saved_page_states:
             self.__dict__.update(state)
@@ -62,6 +81,14 @@ class NumberedCanvas(canvas.Canvas):
         super().save()
 
     def draw_page_decorations(self, page_count: int) -> None:
+        """Draw running headers, footers, accent rules, and total page count string.
+
+        Args:
+            page_count (int): Total number of pages accumulated in two-pass rendering.
+
+        Returns:
+            None
+        """
         self.saveState()
         self.setFont("Helvetica-Bold", 7.5)
         self.setFillColor(colors.HexColor("#475569"))
@@ -98,7 +125,11 @@ class NumberedCanvas(canvas.Canvas):
 
 
 def create_checklist_styles() -> dict[str, ParagraphStyle]:
-    """Construct custom typography styles for executive audit tables."""
+    """Construct custom typography styles for executive audit tables.
+
+    Returns:
+        dict[str, ParagraphStyle]: Dictionary mapping style names to configured ParagraphStyle objects.
+    """
     base = getSampleStyleSheet()
 
     styles: dict[str, ParagraphStyle] = {
@@ -237,7 +268,11 @@ def create_checklist_styles() -> dict[str, ParagraphStyle]:
 
 
 def create_status_chart() -> io.BytesIO:
-    """Generate an executive deliverable and gate status breakdown chart."""
+    """Generate an executive deliverable and gate status breakdown chart.
+
+    Returns:
+        io.BytesIO: In-memory byte buffer containing the rendered dual-panel matplotlib chart PNG.
+    """
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.2, 2.0), dpi=200)
 
     # Deliverables per Sprint
@@ -331,7 +366,11 @@ def create_status_chart() -> io.BytesIO:
 
 
 def get_deliverables_data() -> list[dict[str, str]]:
-    """Return all 23 deliverables from specification Section 17."""
+    """Return all 23 deliverables from specification Section 17.
+
+    Returns:
+        list[dict[str, str]]: Deliverable specification items with ID, sprint, name, path, and verification status.
+    """
     return [
         {
             "id": "D-01",
@@ -521,7 +560,11 @@ def get_deliverables_data() -> list[dict[str, str]]:
 
 
 def get_acceptance_criteria_data() -> list[dict[str, str]]:
-    """Return all 20 acceptance criteria from specification Section 18."""
+    """Return all 20 acceptance criteria from specification Section 18.
+
+    Returns:
+        list[dict[str, str]]: Acceptance criteria audit entries with gate ID, area, description, metric, and status.
+    """
     return [
         {
             "gate": "AC-01",
@@ -667,7 +710,14 @@ def get_acceptance_criteria_data() -> list[dict[str, str]]:
 
 
 def build_kpi_banner(styles: dict[str, ParagraphStyle]) -> Table:
-    """Build the executive KPI metrics summary card."""
+    """Build the executive KPI metrics summary card.
+
+    Args:
+        styles (dict[str, ParagraphStyle]): Typography styles dictionary.
+
+    Returns:
+        Table: ReportLab Table flowable displaying key milestone statistics.
+    """
     card_data = [
         [
             Paragraph("23 / 23", styles["MetricValue"]),
@@ -703,7 +753,15 @@ def build_deliverables_table(
     deliverables: list[dict[str, str]],
     styles: dict[str, ParagraphStyle],
 ) -> Table:
-    """Render the Deliverables audit table with green badges."""
+    """Render the Deliverables audit table with green badges.
+
+    Args:
+        deliverables (list[dict[str, str]]): List of deliverable audit record dictionaries.
+        styles (dict[str, ParagraphStyle]): Typography styles dictionary.
+
+    Returns:
+        Table: ReportLab Table flowable formatted as an executive deliverable matrix.
+    """
     headers = [
         Paragraph("ID", styles["TableHeaderCenter"]),
         Paragraph("Deliverable Name", styles["TableHeader"]),
@@ -755,7 +813,15 @@ def build_criteria_table(
     criteria: list[dict[str, str]],
     styles: dict[str, ParagraphStyle],
 ) -> Table:
-    """Render the Acceptance Criteria audit table with green PASS badges."""
+    """Render the Acceptance Criteria audit table with green PASS badges.
+
+    Args:
+        criteria (list[dict[str, str]]): List of acceptance criteria evaluation records.
+        styles (dict[str, ParagraphStyle]): Typography styles dictionary.
+
+    Returns:
+        Table: ReportLab Table flowable formatted as a quality gate verification matrix.
+    """
     headers = [
         Paragraph("Gate", styles["TableHeaderCenter"]),
         Paragraph("Area", styles["TableHeader"]),
@@ -799,7 +865,14 @@ def build_criteria_table(
 
 
 def build_signoff_box(styles: dict[str, ParagraphStyle]) -> Table:
-    """Render the official sign-off table with date, signatories, and SHA-256 seal."""
+    """Render the official sign-off table with date, signatories, and SHA-256 seal.
+
+    Args:
+        styles (dict[str, ParagraphStyle]): Typography styles dictionary.
+
+    Returns:
+        Table: ReportLab Table flowable containing formal sign-off roles and execution signatures.
+    """
     data = [
         [
             Paragraph("AUDIT ROLE & TITLE", styles["TableHeader"]),

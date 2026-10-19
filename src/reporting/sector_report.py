@@ -51,14 +51,33 @@ class NumberedCanvas(canvas.Canvas):
     """Two-pass canvas adding running header, footer, and dynamic page counts."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize canvas instance with internal list of deferred page states.
+
+        Args:
+            *args (Any): Variable length argument list passed to ReportLab Canvas.
+            **kwargs (Any): Arbitrary keyword arguments passed to ReportLab Canvas.
+
+        Returns:
+            None
+        """
         super().__init__(*args, **kwargs)
         self._saved_page_states: list[dict[str, Any]] = []
 
     def showPage(self) -> None:
+        """Record current page dictionary state for two-pass decoration rendering.
+
+        Returns:
+            None
+        """
         self._saved_page_states.append(dict(self.__dict__))
         self._startPage()
 
     def save(self) -> None:
+        """Render deferred running headers, footers, and page numbers across all pages.
+
+        Returns:
+            None
+        """
         num_pages = len(self._saved_page_states)
         for state in self._saved_page_states:
             self.__dict__.update(state)
@@ -67,6 +86,14 @@ class NumberedCanvas(canvas.Canvas):
         super().save()
 
     def draw_page_decorations(self, page_count: int) -> None:
+        """Draw running headers, footers, accent rules, and total page count string.
+
+        Args:
+            page_count (int): Total number of pages accumulated in two-pass rendering.
+
+        Returns:
+            None
+        """
         self.saveState()
         self.setFont("Helvetica", 7.5)
         self.setFillColor(colors.HexColor("#64748B"))
@@ -98,6 +125,9 @@ def load_sector_dataset(
     db_path: Path | str = DEFAULT_DB_PATH,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Load universe fundamentals, screener scores, and valuation flags.
+
+    Args:
+        db_path (Path | str): Path to SQLite database.
 
     Returns:
         tuple of (full universe DataFrame with 11 sector mapping, peer_percentiles DataFrame)
@@ -144,6 +174,14 @@ def load_sector_dataset(
 
     # Partition 11 sectors (splitting Utilities from Energy)
     def assign_11_sectors(row: pd.Series) -> str:
+        """Map raw company classification into 11 canonical institutional sectors.
+
+        Args:
+            row (pd.Series): Company record series containing broad_sector and sub_sector.
+
+        Returns:
+            str: Standardized 11-sector name.
+        """
         bs = str(row["broad_sector"])
         sub = str(row["sub_sector"]).lower()
         if bs == "Energy":
@@ -204,6 +242,22 @@ def generate_sector_insight_sentence(
     u_de: float,
     u_pe: float,
 ) -> str:
+    """Generate dynamic institutional commentary evaluating sector performance versus universe.
+
+    Args:
+        sector_name (str): Broad sector name identifier.
+        s_roe (float): Sector average return on equity.
+        s_opm (float): Sector average operating profit margin.
+        s_de (float): Sector median debt-to-equity ratio.
+        s_pe (float): Sector median price-to-earnings ratio.
+        u_roe (float): Universe average return on equity.
+        u_opm (float): Universe average operating profit margin.
+        u_de (float): Universe median debt-to-equity ratio.
+        u_pe (float): Universe median price-to-earnings ratio.
+
+    Returns:
+        str: Analytical paragraph summarizing relative outperformance, profitability, and leverage.
+    """
     """Auto-generate one synthetic institutional insight sentence comparing highest/lowest metrics."""
     display_name = (
         "IT Services"
@@ -450,6 +504,16 @@ def generate_sector_report(
 
     # 4 KPI Summary Cards in a 1x4 table
     def make_kpi_cell(label: str, value: str, sub: str) -> list[Any]:
+        """Construct individual KPI cell flowables for sector header cards.
+
+        Args:
+            label (str): Title or metric name.
+            value (str): Main metric value string.
+            sub (str): Subtitle or context string.
+
+        Returns:
+            list[Any]: List of formatted Paragraphs and Spacers.
+        """
         return [
             Paragraph(
                 f"<font size='7' color='#64748B'><b>{label}</b></font>",
@@ -908,6 +972,10 @@ def generate_all_sector_reports(
     output_dir: Path | str = DEFAULT_SECTOR_REPORTS_DIR,
 ) -> list[Path]:
     """Generate all 11 institutional sector report PDFs.
+
+    Args:
+        db_path (Path | str): Path to SQLite database.
+        output_dir (Path | str): Destination directory for generated PDF files.
 
     Returns:
         List of generated PDF file paths.

@@ -262,7 +262,11 @@ class PeerGroupDetailResponse(BaseModel):
 
 
 def get_db_path() -> Path:
-    """Resolve the SQLite database path from environment or default repo location."""
+    """Resolve the SQLite database path from environment or default repo location.
+
+    Returns:
+        Path: Absolute path to nifty100.db SQLite file.
+    """
     env_path = os.getenv("DB_PATH")
     if env_path:
         p = Path(env_path)
@@ -283,7 +287,11 @@ def get_db_path() -> Path:
 
 
 def get_db_connection() -> sqlite3.Connection:
-    """Open an optimized SQLite database connection with row factory."""
+    """Open an optimized SQLite database connection with row factory.
+
+    Returns:
+        sqlite3.Connection: Read-optimized database connection with Row factory.
+    """
     db_path = get_db_path()
     if not db_path.exists():
         raise FileNotFoundError(f"Database not found at: {db_path}")
@@ -294,7 +302,11 @@ def get_db_connection() -> sqlite3.Connection:
 
 @functools.lru_cache(maxsize=1)
 def load_screener_config_cached() -> dict[str, Any]:
-    """Load screener configuration YAML cached."""
+    """Load screener configuration YAML cached in memory.
+
+    Returns:
+        dict[str, Any]: Screener thresholds and preset rules dictionary.
+    """
     cfg_path = DEFAULT_CONFIG_PATH
     if not cfg_path.exists():
         cfg_path = Path("screener_config.yaml")
@@ -309,7 +321,11 @@ def load_screener_config_cached() -> dict[str, Any]:
 
 @functools.lru_cache(maxsize=1)
 def load_universe_df_cached() -> pd.DataFrame:
-    """Load latest annual snapshot per company, joined with sectors, market_cap, and scores."""
+    """Load latest annual snapshot per company, joined with sectors, market_cap, and scores.
+
+    Returns:
+        pd.DataFrame: Enriched universe DataFrame containing latest financial metrics.
+    """
     conn = get_db_connection()
     try:
         sql = """
@@ -369,6 +385,14 @@ def load_universe_df_cached() -> pd.DataFrame:
 
         # Partition 11 macro sectors (Utilities split from Energy)
         def assign_11_sectors(row: pd.Series) -> str:
+            """Map company sector classification into one of the 11 broad sectors.
+
+            Args:
+                row (pd.Series): DataFrame row containing sector or broad_sector information.
+
+            Returns:
+                str: Standardized broad sector name.
+            """
             bs = str(row["broad_sector"])
             sub = str(row["sub_sector"]).lower()
             if bs == "Energy":
@@ -433,6 +457,11 @@ def load_universe_df_cached() -> pd.DataFrame:
     "/", tags=["Diagnostic"], summary="API Root Information", include_in_schema=False
 )
 def root_info() -> dict[str, Any]:
+    """Return platform metadata, active API version, and documentation navigation links.
+
+    Returns:
+        dict[str, Any]: API root overview dictionary including docs and health URLs.
+    """
     return {
         "platform": "N100 Financial Intelligence Platform API",
         "version": "1.0.0",
@@ -456,6 +485,11 @@ def root_info() -> dict[str, Any]:
     include_in_schema=False,
 )
 def health_check() -> JSONResponse:
+    """Perform system health check and return SQLite table row count telemetry.
+
+    Returns:
+        JSONResponse: HTTP 200 payload with database connection status, uptime, and row counts.
+    """
     db_path = get_db_path()
     try:
         conn = get_db_connection()
@@ -491,7 +525,11 @@ def health_check() -> JSONResponse:
 
 @functools.lru_cache(maxsize=1)
 def load_valuation_summary_cached() -> pd.DataFrame:
-    """Load pre-computed valuation summary table from reports/valuation_summary.xlsx."""
+    """Load pre-computed valuation summary table from reports/valuation_summary.xlsx.
+
+    Returns:
+        pd.DataFrame: DataFrame containing company valuation metrics and flags.
+    """
     candidates = [
         REPO_ROOT / "reports" / "valuation_summary.xlsx",
         REPO_ROOT / "valuation_summary.xlsx",
@@ -508,7 +546,15 @@ def load_valuation_summary_cached() -> pd.DataFrame:
 def compute_dcf_implied(
     fcf_base: float | None, mcap: float | None
 ) -> tuple[float | None, float | None]:
-    """Compute 2-stage DCF implied enterprise/equity value and upside percentage."""
+    """Compute 2-stage DCF implied enterprise/equity value and upside percentage.
+
+    Args:
+        fcf_base (float | None): Normalized base Free Cash Flow in INR Crores.
+        mcap (float | None): Current market capitalization in INR Crores.
+
+    Returns:
+        tuple[float | None, float | None]: A tuple of (implied_dcf_value_cr, gap_percentage).
+    """
     if fcf_base is not None and not pd.isna(fcf_base) and fcf_base > 0:
         g = 0.12
         r = 0.115
@@ -550,6 +596,14 @@ def compute_dcf_implied(
 def get_companies(
     sector: str | None = Query(None, description="Filter by broad sector")
 ) -> list[CompanySummary]:
+    """List Nifty 100 constituents with sector, peer group, and composite scores.
+
+    Args:
+        sector (str | None): Optional case-insensitive broad sector filter.
+
+    Returns:
+        list[CompanySummaryItem]: List of company summary records.
+    """
     df = load_universe_df_cached()
     if sector:
         target_sec = sector.strip().lower()
@@ -591,6 +645,14 @@ def get_companies(
     include_in_schema=False,
 )
 def get_company_profile(ticker: str) -> CompanyProfile:
+    """Retrieve full company profile and latest annual financial metrics.
+
+    Args:
+        ticker (str): NSE ticker symbol (e.g., 'TCS', 'INFY').
+
+    Returns:
+        CompanyProfile: Detailed company profile, description, ratios, and links.
+    """
     clean_ticker = ticker.strip().upper()
     df = load_universe_df_cached()
     matched = df[df["company_id"].str.upper() == clean_ticker]
@@ -651,6 +713,14 @@ def get_company_profile(ticker: str) -> CompanyProfile:
     description="Returns all ratio rows across all years for a company.",
 )
 def get_company_ratios(ticker: str) -> CompanyRatiosResponse:
+    """Retrieve multi-year historical financial ratio records for a company.
+
+    Args:
+        ticker (str): NSE ticker symbol.
+
+    Returns:
+        CompanyRatiosResponse: Historical ratio rows ordered chronologically.
+    """
     clean_ticker = ticker.strip().upper()
     conn = get_db_connection()
     try:
@@ -687,6 +757,14 @@ def get_company_ratios(ticker: str) -> CompanyRatiosResponse:
     description="Returns multi-year historical P&L, Balance Sheet, and Cash Flow statements.",
 )
 def get_company_financials(ticker: str) -> CompanyFinancialsResponse:
+    """Retrieve multi-year P&L, balance sheet, and cash flow statement records.
+
+    Args:
+        ticker (str): NSE ticker symbol.
+
+    Returns:
+        CompanyFinancialsResponse: Historical financial statement series.
+    """
     clean_ticker = ticker.strip().upper()
     conn = get_db_connection()
     try:
@@ -740,6 +818,14 @@ def get_company_financials(ticker: str) -> CompanyFinancialsResponse:
     description="Returns peer group members and percentile ranks for ROE, ROCE, OPM, Rev CAGR 3yr, and Composite Score.",
 )
 def get_company_peers(ticker: str) -> CompanyPeersResponse:
+    """Retrieve peer group constituents and percentile ranks for a company.
+
+    Args:
+        ticker (str): NSE ticker symbol.
+
+    Returns:
+        CompanyPeersResponse: Peer group members and comparative percentile metrics.
+    """
     clean_ticker = ticker.strip().upper()
     conn = get_db_connection()
     try:
@@ -866,6 +952,18 @@ def run_screener_query(
         None, description="Maximum Price-to-Earnings multiple"
     ),
 ) -> list[ScreenerCompanyItem]:
+    """Execute dynamic fundamental screening against the latest universe snapshot.
+
+    Args:
+        min_roe (float | None): Optional minimum ROE percentage threshold.
+        max_de (float | None): Optional maximum Debt-to-Equity threshold.
+        min_fcf (float | None): Optional minimum Free Cash Flow in INR Crores.
+        min_opm (float | None): Optional minimum Operating Profit Margin percentage.
+        max_pe (float | None): Optional maximum P/E valuation multiple.
+
+    Returns:
+        list[ScreenerCompanyItem]: Filtered list of matching companies sorted by rank.
+    """
     df = load_universe_df_cached().copy()
 
     # Apply criteria with Sprint 3 strict null exclusion logic
@@ -928,6 +1026,11 @@ def run_screener_query(
     include_in_schema=False,
 )
 def get_screener_presets() -> list[ScreenerPresetItem]:
+    """List all available pre-configured investment screener strategy presets.
+
+    Returns:
+        list[ScreenerPresetItem]: List of preset definitions, names, and filter criteria.
+    """
     cfg = load_screener_config_cached()
     presets = cfg.get("presets", {})
     results: list[ScreenerPresetItem] = []
@@ -952,6 +1055,14 @@ def get_screener_presets() -> list[ScreenerPresetItem]:
     description="Executes a named preset (e.g. 'quality_compounder', 'value_pick') and returns matching companies.",
 )
 def run_screener_preset(preset_name: str) -> list[ScreenerCompanyItem]:
+    """Execute a named screener preset strategy and return qualifying constituents.
+
+    Args:
+        preset_name (str): Identifier of the preset (e.g., 'quality_compounder', 'value_pick').
+
+    Returns:
+        list[ScreenerCompanyItem]: Qualifying companies ranked by composite score.
+    """
     clean_name = preset_name.strip().lower().replace(" ", "_").replace("-", "_")
     cfg = load_screener_config_cached()
     presets = cfg.get("presets", {})
@@ -1046,6 +1157,11 @@ def run_screener_preset(preset_name: str) -> list[ScreenerCompanyItem]:
     include_in_schema=False,
 )
 def get_all_sectors() -> list[SectorSummaryItem]:
+    """Retrieve aggregate market capitalization and financial statistics for all sectors.
+
+    Returns:
+        list[SectorSummaryItem]: Sector summaries with constituent counts and median ratios.
+    """
     df = load_universe_df_cached()
     results: list[SectorSummaryItem] = []
     for s_name, g in df.groupby("sector_11"):
@@ -1081,6 +1197,14 @@ def get_all_sectors() -> list[SectorSummaryItem]:
     description="Returns summary KPIs and constituent companies with latest ratios for a specific sector.",
 )
 def get_sector_detail(sector_name: str) -> SectorDetailResponse:
+    """Retrieve detailed macro metrics and constituent rankings for a broad sector.
+
+    Args:
+        sector_name (str): Name of the broad sector (e.g., 'Information Technology').
+
+    Returns:
+        SectorDetailResponse: Sector overview, universe comparison, and company rankings.
+    """
     clean_name = sector_name.strip().lower().replace("_", " ")
     df = load_universe_df_cached()
 
@@ -1169,6 +1293,11 @@ def get_sector_detail(sector_name: str) -> SectorDetailResponse:
     include_in_schema=False,
 )
 def get_market_overview() -> MarketOverviewResponse:
+    """Retrieve macro universe overview, sector distribution, and top compounders.
+
+    Returns:
+        MarketOverviewResponse: Universe market cap, median ratios, and sector summaries.
+    """
     df = load_universe_df_cached()
 
     u_roe = float(df["roe"].dropna().mean())
@@ -1222,6 +1351,14 @@ def get_market_overview() -> MarketOverviewResponse:
     include_in_schema=False,
 )
 def get_company_cashflow(ticker: str) -> CompanyCashflowResponse:
+    """Retrieve forensic cash flow analytics, capital allocation pattern, and quality score.
+
+    Args:
+        ticker (str): NSE ticker symbol.
+
+    Returns:
+        CompanyCashflowResponse: Cash flow trajectory, capital allocation pattern, and CFO quality.
+    """
     clean_ticker = ticker.strip().upper()
     conn = get_db_connection()
     cur = conn.cursor()
@@ -1327,6 +1464,14 @@ def get_company_cashflow(ticker: str) -> CompanyCashflowResponse:
     include_in_schema=False,
 )
 def get_company_valuation(ticker: str) -> CompanyValuationResponse:
+    """Retrieve market valuation multiples and 2-stage DCF intrinsic value estimates.
+
+    Args:
+        ticker (str): NSE ticker symbol.
+
+    Returns:
+        CompanyValuationResponse: Valuation multiples (P/E, P/B, EV/EBITDA), DCF value, and flags.
+    """
     clean_ticker = ticker.strip().upper()
     val_df = load_valuation_summary_cached()
 
@@ -1396,6 +1541,14 @@ def get_company_valuation(ticker: str) -> CompanyValuationResponse:
     include_in_schema=False,
 )
 def get_peer_group_analysis(peer_group_name: str) -> PeerGroupDetailResponse:
+    """Retrieve comprehensive intra-group peer comparison and percentile matrices.
+
+    Args:
+        peer_group_name (str): Peer group name (e.g., 'IT Services & Consulting').
+
+    Returns:
+        PeerGroupDetailResponse: Peer group constituent metrics and percentile ranks.
+    """
     clean_query = peer_group_name.strip().lower().replace("_", " ").replace("-", " ")
     conn = get_db_connection()
     cur = conn.cursor()
@@ -1518,6 +1671,14 @@ def get_peer_group_analysis(peer_group_name: str) -> PeerGroupDetailResponse:
     include_in_schema=False,
 )
 def get_tearsheet_report(ticker: str) -> FileResponse:
+    """Download pre-generated 2-page publication-grade PDF tearsheet for a company.
+
+    Args:
+        ticker (str): NSE ticker symbol.
+
+    Returns:
+        FileResponse: PDF file stream with application/pdf media type.
+    """
     clean_ticker = ticker.strip().upper()
     tearsheet_path = (
         REPO_ROOT / "reports" / "tearsheets" / f"{clean_ticker}_tearsheet.pdf"
@@ -1551,6 +1712,14 @@ def get_tearsheet_report(ticker: str) -> FileResponse:
     include_in_schema=False,
 )
 def get_sector_report_pdf(sector_name: str) -> FileResponse:
+    """Download pre-generated 3-page institutional PDF macro research report for a sector.
+
+    Args:
+        sector_name (str): Name of the broad sector.
+
+    Returns:
+        FileResponse: PDF file stream with application/pdf media type.
+    """
     clean_input = sector_name.strip().replace(" ", "_").replace("-", "_")
     sector_dir = REPO_ROOT / "reports" / "sector_reports"
 

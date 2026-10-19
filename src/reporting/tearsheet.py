@@ -49,14 +49,33 @@ class NumberedCanvas(canvas.Canvas):
     """Two-pass canvas adding running footer and page numbering."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize canvas instance with internal list of deferred page states.
+
+        Args:
+            *args (Any): Variable length argument list passed to ReportLab Canvas.
+            **kwargs (Any): Arbitrary keyword arguments passed to ReportLab Canvas.
+
+        Returns:
+            None
+        """
         super().__init__(*args, **kwargs)
         self._saved_page_states: list[dict[str, Any]] = []
 
     def showPage(self) -> None:
+        """Record current page dictionary state for two-pass decoration rendering.
+
+        Returns:
+            None
+        """
         self._saved_page_states.append(dict(self.__dict__))
         self._startPage()
 
     def save(self) -> None:
+        """Render deferred running headers, footers, and page numbers across all pages.
+
+        Returns:
+            None
+        """
         num_pages = len(self._saved_page_states)
         for state in self._saved_page_states:
             self.__dict__.update(state)
@@ -65,6 +84,14 @@ class NumberedCanvas(canvas.Canvas):
         super().save()
 
     def draw_page_decorations(self, page_count: int) -> None:
+        """Draw running headers, footers, accent rules, and total page count string.
+
+        Args:
+            page_count (int): Total number of pages accumulated in two-pass rendering.
+
+        Returns:
+            None
+        """
         self.saveState()
         self.setFont("Helvetica", 7.5)
         self.setFillColor(colors.HexColor("#64748B"))
@@ -100,6 +127,17 @@ def get_company_logo_flowable(
     width: float = 38,
     height: float = 38,
 ) -> RLImage:
+    """Retrieve or generate corporate badge icon flowable for company tearsheets.
+
+    Args:
+        ticker (str): NSE ticker symbol.
+        logo_url (str | None): External or local logo URL string, if available.
+        width (float): Desired icon width in points.
+        height (float): Desired icon height in points.
+
+    Returns:
+        RLImage: ReportLab Image flowable representing company badge.
+    """
     """Fetch company logo with rapid timeout, falling back cleanly to procedural placeholder."""
     global _NETWORK_FAILS
     if ticker in _LOGO_CACHE:
@@ -156,7 +194,14 @@ def get_company_logo_flowable(
 
 
 def generate_pl_trend_chart(df_pl_comp: pd.DataFrame) -> io.BytesIO:
-    """Generate 10-year Revenue and PAT trend as matplotlib chart in memory."""
+    """Generate 10-year Revenue and PAT trend as matplotlib chart in memory.
+
+    Args:
+        df_pl_comp (pd.DataFrame): 10-year historical profit and loss records.
+
+    Returns:
+        io.BytesIO: In-memory byte buffer containing the dual-line trend chart PNG.
+    """
     buf = io.BytesIO()
     fig, ax = plt.subplots(figsize=(7.2, 2.15), dpi=150)
     fig.patch.set_facecolor("#FFFFFF")
@@ -234,7 +279,14 @@ def generate_pl_trend_chart(df_pl_comp: pd.DataFrame) -> io.BytesIO:
 
 
 def generate_cashflow_bars_chart(df_cf_comp: pd.DataFrame) -> io.BytesIO:
-    """Generate 5-year CFO/CFI/CFF grouped bar chart in memory."""
+    """Generate 5-year CFO/CFI/CFF grouped bar chart in memory.
+
+    Args:
+        df_cf_comp (pd.DataFrame): Historical cash flow breakdown records.
+
+    Returns:
+        io.BytesIO: In-memory byte buffer containing the grouped bar chart PNG.
+    """
     buf = io.BytesIO()
     fig, ax = plt.subplots(figsize=(7.2, 1.95), dpi=150)
     fig.patch.set_facecolor("#FFFFFF")
@@ -328,7 +380,16 @@ def generate_cashflow_bars_chart(df_cf_comp: pd.DataFrame) -> io.BytesIO:
 
 
 def format_kpi_value(val: float | None, unit: str = "%", precision: int = 1) -> str:
-    """Safely format ratio values, returning N/A for None/NaN without crashing."""
+    """Safely format ratio values, returning N/A for None/NaN without crashing.
+
+    Args:
+        val (float | None): Numerical ratio value to format.
+        unit (str): Unit string (e.g., '%', 'x', 'Cr').
+        precision (int): Number of decimal places.
+
+    Returns:
+        str: Formatted string or 'N/A'.
+    """
     if val is None or pd.isna(val):
         return "N/A"
     if unit == "%":
@@ -346,7 +407,18 @@ def build_kpi_box(
     indicator_color: str,
     styles: dict[str, ParagraphStyle],
 ) -> Table:
-    """Build a styled individual KPI container box for the 2x3 grid."""
+    """Build a styled individual KPI container box for the 2x3 grid.
+
+    Args:
+        title (str): Metric label name.
+        val_str (str): Formatted primary metric value.
+        indicator_str (str): Trend indicator or delta string.
+        indicator_color (str): Hex color code for indicator symbol.
+        styles (dict[str, ParagraphStyle]): Typography styles dictionary.
+
+    Returns:
+        Table: ReportLab Table flowable formatted as an executive KPI tile.
+    """
     cell_flowables = [
         Paragraph(
             f'<font size=6.5 color="#64748B"><b>{title.upper()}</b></font>',
@@ -393,7 +465,25 @@ def build_tearsheet_pdf(
     cap_alloc_label: str,
     output_pdf_path: Path,
 ) -> None:
-    """Generate exactly 2-page PDF tearsheet for a company."""
+    """Generate exactly 2-page PDF tearsheet for a company.
+
+    Args:
+        company_id (str): NSE ticker symbol.
+        comp_row (dict[str, Any]): Company metadata and valuation summary.
+        latest_ratios (dict[str, Any]): Latest annual financial ratios dictionary.
+        sector_medians (dict[str, Any]): Sector-wide median ratio benchmarks.
+        df_pl_comp (pd.DataFrame): 10-year profit and loss historical records.
+        df_cf_comp (pd.DataFrame): Historical cash flow activity records.
+        pros_list (list[str]): Qualitative key strengths.
+        cons_list (list[str]): Qualitative key concerns.
+        peers_df (pd.DataFrame): Peer group comparative rankings and metrics.
+        val_row (dict[str, Any]): Valuation engine multiples and implied DCF values.
+        cap_alloc_label (str): 8-pattern capital allocation classification label.
+        output_pdf_path (Path): Target file destination path.
+
+    Returns:
+        None
+    """
     doc = SimpleDocTemplate(
         str(output_pdf_path),
         pagesize=A4,
@@ -897,7 +987,17 @@ def generate_company_tearsheet(
     reports_dir: Path | str = DEFAULT_REPORTS_DIR,
     output_dir: Path | str = DEFAULT_TEARSHEETS_DIR,
 ) -> Path:
-    """Generate a 2-page PDF tearsheet for a single company."""
+    """Generate a 2-page PDF tearsheet for a single company.
+
+    Args:
+        company_id (str): NSE ticker symbol.
+        db_path (Path | str): Path to SQLite database.
+        reports_dir (Path | str): Base reports directory path.
+        output_dir (Path | str): Output directory for saved tearsheets.
+
+    Returns:
+        Path: Absolute path to the generated company tearsheet PDF.
+    """
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{company_id}_tearsheet.pdf"
@@ -1041,7 +1141,16 @@ def generate_all_tearsheets(
     reports_dir: Path | str = DEFAULT_REPORTS_DIR,
     output_dir: Path | str = DEFAULT_TEARSHEETS_DIR,
 ) -> dict[str, Any]:
-    """Preload datasets in bulk and generate 2-page tearsheets for all 92 companies."""
+    """Preload datasets in bulk and generate 2-page tearsheets for all 92 companies.
+
+    Args:
+        db_path (Path | str): Path to SQLite database.
+        reports_dir (Path | str): Base reports directory path.
+        output_dir (Path | str): Destination directory for generated PDF files.
+
+    Returns:
+        dict[str, Any]: Batch generation summary metrics including success counts and durations.
+    """
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 

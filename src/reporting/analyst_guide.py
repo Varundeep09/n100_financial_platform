@@ -50,14 +50,33 @@ class NumberedCanvas(canvas.Canvas):
     """Two-pass canvas adding running header, footer, and dynamic page counts."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize canvas instance with internal list of deferred page states.
+
+        Args:
+            *args (Any): Variable length argument list passed to ReportLab Canvas.
+            **kwargs (Any): Arbitrary keyword arguments passed to ReportLab Canvas.
+
+        Returns:
+            None
+        """
         super().__init__(*args, **kwargs)
         self._saved_page_states: list[dict[str, Any]] = []
 
     def showPage(self) -> None:
+        """Record current page dictionary state for two-pass decoration rendering.
+
+        Returns:
+            None
+        """
         self._saved_page_states.append(dict(self.__dict__))
         self._startPage()
 
     def save(self) -> None:
+        """Render deferred running headers, footers, and page numbers across all pages.
+
+        Returns:
+            None
+        """
         num_pages = len(self._saved_page_states)
         for state in self._saved_page_states:
             self.__dict__.update(state)
@@ -66,6 +85,14 @@ class NumberedCanvas(canvas.Canvas):
         super().save()
 
     def draw_page_decorations(self, page_count: int) -> None:
+        """Draw running headers, footers, accent rules, and total page count string.
+
+        Args:
+            page_count (int): Total number of pages accumulated in two-pass rendering.
+
+        Returns:
+            None
+        """
         if self._pageNumber == 1:
             return  # Suppress headers/footers on cover
 
@@ -100,7 +127,11 @@ class NumberedCanvas(canvas.Canvas):
 
 
 def get_analyst_guide_styles() -> dict[str, ParagraphStyle]:
-    """Build typography and styling palette for the Analyst Guide."""
+    """Build typography and styling palette for the Analyst Guide.
+
+    Returns:
+        dict[str, ParagraphStyle]: Dictionary mapping typography names to ParagraphStyle instances.
+    """
     base = getSampleStyleSheet()
 
     styles: dict[str, ParagraphStyle] = {
@@ -253,6 +284,18 @@ def make_callout(
     bg_hex: str = "#F0F9FF",
     border_hex: str = "#0284C7",
 ) -> Table:
+    """Construct an institutional callout block with custom border accent and background.
+
+    Args:
+        text (str): Content body text or markdown.
+        styles (dict[str, ParagraphStyle]): Typography styles dictionary.
+        title (str): Banner title string.
+        bg_hex (str): Background hex color.
+        border_hex (str): Left accent rule hex color.
+
+    Returns:
+        Table: ReportLab Table flowable formatted as an executive tip or warning.
+    """
     """Create a stylized callout box for tips and warnings."""
     content = [
         Paragraph(f"<b>{title}</b>", styles["TableCellBold"]),
@@ -276,7 +319,11 @@ def make_callout(
 
 
 def generate_composite_score_hist_image() -> io.BytesIO:
-    """Generate in-memory histogram chart of universe composite scores."""
+    """Generate in-memory histogram chart of universe composite scores.
+
+    Returns:
+        io.BytesIO: In-memory byte buffer containing the histogram chart PNG.
+    """
     scores = []
     if DB_PATH.exists():
         conn = sqlite3.connect(DB_PATH)
@@ -336,7 +383,11 @@ def generate_composite_score_hist_image() -> io.BytesIO:
 
 
 def generate_sector_roe_bar_image() -> io.BytesIO:
-    """Generate in-memory horizontal bar chart comparing sector average ROEs."""
+    """Generate in-memory horizontal bar chart comparing sector average ROEs.
+
+    Returns:
+        io.BytesIO: In-memory byte buffer containing the sector benchmark bar chart PNG.
+    """
     sectors = [
         ("Information Tech", 24.8),
         ("Consumer Staples", 23.4),
@@ -394,7 +445,14 @@ def generate_sector_roe_bar_image() -> io.BytesIO:
 
 
 def generate_analyst_guide_pdf(output_path: Path | str | None = None) -> Path:
-    """Generate the complete 12-page Analyst Guide PDF."""
+    """Generate the complete 12-page Analyst Guide PDF.
+
+    Args:
+        output_path (Path | str | None): Target file destination path for generated PDF.
+
+    Returns:
+        Path: Absolute path to the generated Analyst Guide PDF document.
+    """
     target_pdf = Path(output_path) if output_path else DEFAULT_OUTPUT_PDF
     target_pdf.parent.mkdir(parents=True, exist_ok=True)
 

@@ -34,7 +34,18 @@ def calculate_cagr(
     end_value: float | None,
     periods: int,
 ) -> tuple[float | None, str | None]:
-    """Calculate CAGR over n periods, returning (cagr_pct, edge_case_flag) per Section 23.1."""
+    """Calculate CAGR over n periods, returning (cagr_pct, edge_case_flag) per Section 23.1.
+
+    Args:
+        start_value (float | None): Metric value at the start of the horizon.
+        end_value (float | None): Metric value at the end of the horizon.
+        periods (int): Number of intervening annual growth periods (e.g. 3, 5, 10).
+
+    Returns:
+        tuple[float | None, str | None]: A tuple of (cagr_percentage, edge_case_flag)
+            where edge_case_flag identifies scenarios such as 'Turnaround', 'Loss to Profit',
+            'Both Negative', or 'Zero Base'.
+    """
     if periods is None or periods <= 0:
         return None, "INSUFFICIENT"
     if start_value is None or end_value is None:
@@ -76,7 +87,16 @@ def get_pl_cagr_data(
     db_path: Path = DB_PATH,
     conn: sqlite3.Connection | None = None,
 ) -> pd.DataFrame:
-    """Extract annual P&L figures (sales, net_profit, eps) for CAGR computation."""
+    """Extract annual P&L figures (sales, net_profit, eps) for CAGR computation.
+
+    Args:
+        company_id (str | None): Optional specific NSE ticker symbol to query.
+        db_path (Path): Path to the SQLite database file.
+        conn (sqlite3.Connection | None): Optional active database connection.
+
+    Returns:
+        pd.DataFrame: Annual financial series sorted by company and fiscal period.
+    """
     should_close = False
     if conn is None:
         conn = sqlite3.connect(str(db_path))
@@ -104,7 +124,15 @@ def calculate_cagr_metrics(
     df: pd.DataFrame,
     windows: tuple[int, ...] = (3, 5, 10),
 ) -> pd.DataFrame:
-    """Compute 3yr, 5yr, and 10yr CAGR and edge-case flags using exact year-gap matching."""
+    """Compute 3yr, 5yr, and 10yr CAGR and edge-case flags using exact year-gap matching.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing historical annual financial metrics.
+        windows (tuple[int, ...]): Tuple of period horizons in years (default: (3, 5, 10)).
+
+    Returns:
+        pd.DataFrame: DataFrame enriched with multi-year CAGR columns and forensic diagnostic flags.
+    """
     if df.empty:
         return pd.DataFrame()
 
@@ -181,7 +209,16 @@ def get_cagr_summary(
     db_path: Path = DB_PATH,
     latest_only: bool = True,
 ) -> pd.DataFrame:
-    """Retrieve CAGR analytics table, optionally filtering to each company's latest fiscal year."""
+    """Retrieve CAGR analytics table, optionally filtering to each company's latest fiscal year.
+
+    Args:
+        company_id (str | None): Optional specific NSE ticker symbol to filter on.
+        db_path (Path): Path to the SQLite database file.
+        latest_only (bool): If True, filters down to the most recent fiscal year per company.
+
+    Returns:
+        pd.DataFrame: Structured CAGR summary table across the universe.
+    """
     raw_df = get_pl_cagr_data(company_id=company_id, db_path=db_path)
     if raw_df.empty:
         return pd.DataFrame()

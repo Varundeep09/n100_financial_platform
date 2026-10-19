@@ -134,6 +134,14 @@ def calculate_valuation_metrics(
 
     # Automated Relative Valuation Flag (vs Sector Median P/E)
     def assign_valuation_flag(row: pd.Series) -> str:
+        """Classify current P/E multiple relative to sector median benchmark.
+
+        Args:
+            row (pd.Series): DataFrame row containing pe_ratio and sector_median_pe.
+
+        Returns:
+            str: Valuation category ('Caution (Overvalued)', 'Discount (Undervalued)', 'Fair', or 'Not Applicable').
+        """
         pe = row["pe_ratio"]
         sec_pe = row["sector_median_pe"]
         if pd.isna(pe) or pd.isna(sec_pe) or sec_pe <= 0:
@@ -148,6 +156,14 @@ def calculate_valuation_metrics(
 
     # Historical Valuation Flag (vs Company 5-Yr Median P/E)
     def assign_historical_flag(row: pd.Series) -> str:
+        """Classify current P/E multiple relative to 5-year historical average.
+
+        Args:
+            row (pd.Series): DataFrame row containing pe_ratio and pe_5yr_avg.
+
+        Returns:
+            str: Historical valuation category ('Historical Premium', 'Historical Discount', 'In Line', or 'Not Applicable').
+        """
         pe = row["pe_ratio"]
         med_pe = row["median_pe_5yr"]
         if pd.isna(pe) or pd.isna(med_pe) or med_pe <= 0:

@@ -93,7 +93,24 @@ def normalize_pl_statement(
     company_id: str | None = None,
     broad_sector: str | None = None,
 ) -> dict[str, Any]:
-    """Normalize and remap P&L line items based on evidence-based classification."""
+    """Normalize and remap P&L line items based on evidence-based classification.
+
+    Args:
+        sales (float | None): Reported sales or top-line revenue figure.
+        expenses (float | None): Reported operating expenses or line items.
+        operating_profit (float | None): Reported operating profit before adjustments.
+        opm_percentage (float | None): Reported operating profit margin percentage.
+        other_income (float | None): Other non-operating income.
+        depreciation (float | None): Reported depreciation and amortization expense.
+        profit_before_tax (float | None): Reported profit before tax (PBT).
+        net_profit (float | None): Reported profit after tax (PAT).
+        company_id (str | None): NSE ticker identifier of the entity.
+        broad_sector (str | None): Macro sector name (e.g., 'Financial Services').
+
+    Returns:
+        dict[str, Any]: Normalized statement dictionary containing remapped line items
+            and classification flags (e.g., true_sales, true_operating_profit, is_banking_template).
+    """
     is_financial = broad_sector == "Financials"
     is_banking_template = (
         company_id in BANKING_TEMPLATE_COMPANIES if company_id else False
@@ -163,7 +180,15 @@ def normalize_pl_statement(
 
 
 def compute_npm(net_profit: float | None, sales: float | None) -> float | None:
-    """Calculate Net Profit Margin as (net_profit / sales) * 100, returning None if sales <= 0."""
+    """Calculate Net Profit Margin as (net_profit / sales) * 100, returning None if sales <= 0.
+
+    Args:
+        net_profit (float | None): Profit after tax (PAT) in INR Crores.
+        sales (float | None): Top-line sales revenue in INR Crores.
+
+    Returns:
+        float | None: Net Profit Margin percentage, or None if sales is zero, negative, or invalid.
+    """
     if net_profit is None or sales is None:
         return None
     if isinstance(net_profit, (float, np.floating)) and np.isnan(net_profit):
@@ -183,7 +208,19 @@ def compute_opm(
     year: str | None = None,
     is_banking_template: bool = False,
 ) -> float | None:
-    """Calculate Operating Profit Margin as (operating_profit / sales) * 100, returning None for banking templates."""
+    """Calculate Operating Profit Margin as (operating_profit / sales) * 100, returning None for banking templates.
+
+    Args:
+        operating_profit (float | None): Operating profit (EBITDA/PBIT) in INR Crores.
+        sales (float | None): Top-line revenue in INR Crores.
+        source_opm (float | None): Raw OPM percentage from source dataset for reconciliation.
+        company_id (str | None): NSE ticker symbol for diagnostic audit logging.
+        year (str | None): Fiscal period identifier.
+        is_banking_template (bool): Flag indicating banking statement template structure.
+
+    Returns:
+        float | None: Operating Profit Margin percentage, or None for banking entities or invalid revenue.
+    """
     if is_banking_template or (company_id and company_id in BANKING_TEMPLATE_COMPANIES):
         return None
 
@@ -227,7 +264,16 @@ def compute_roe(
     equity_capital: float | None,
     reserves: float | None,
 ) -> float | None:
-    """Calculate Return on Equity as (net_profit / (equity_capital + reserves)) * 100, returning None if equity <= 0."""
+    """Calculate Return on Equity as (net_profit / (equity_capital + reserves)) * 100, returning None if equity <= 0.
+
+    Args:
+        net_profit (float | None): Profit after tax (PAT) in INR Crores.
+        equity_capital (float | None): Share capital from balance sheet in INR Crores.
+        reserves (float | None): Reserves and surplus from balance sheet in INR Crores.
+
+    Returns:
+        float | None: Return on Equity percentage, or None if shareholders' equity is zero or negative.
+    """
     if net_profit is None or equity_capital is None or reserves is None:
         return None
     for val in [net_profit, equity_capital, reserves]:
@@ -248,7 +294,20 @@ def compute_roce(
     broad_sector: str | None = None,
     is_banking_template: bool = False,
 ) -> dict[str, Any]:
-    """Calculate ROCE as EBIT / Capital Employed, returning None for banking templates but preserving sector_relative flag."""
+    """Calculate ROCE as EBIT / Capital Employed, returning None for banking templates but preserving sector_relative flag.
+
+    Args:
+        operating_profit (float | None): Operating profit in INR Crores.
+        depreciation (float | None): Depreciation expense in INR Crores.
+        equity_capital (float | None): Share capital in INR Crores.
+        reserves (float | None): Reserves and surplus in INR Crores.
+        borrowings (float | None): Total debt / borrowings in INR Crores.
+        broad_sector (str | None): Macro sector name.
+        is_banking_template (bool): Flag indicating financial institution reporting model.
+
+    Returns:
+        dict[str, Any]: Dictionary containing 'value' (float or None) and 'sector_relative' flag.
+    """
     is_financials = broad_sector == "Financials"
     if is_banking_template:
         return {"value": None, "sector_relative": True}
@@ -281,7 +340,15 @@ def compute_roce(
 
 
 def compute_roa(net_profit: float | None, total_assets: float | None) -> float | None:
-    """Calculate Return on Assets as (net_profit / total_assets) * 100, returning None if assets <= 0."""
+    """Calculate Return on Assets as (net_profit / total_assets) * 100, returning None if assets <= 0.
+
+    Args:
+        net_profit (float | None): Profit after tax (PAT) in INR Crores.
+        total_assets (float | None): Total balance sheet assets in INR Crores.
+
+    Returns:
+        float | None: Return on Assets percentage, or None if total assets is zero or negative.
+    """
     if net_profit is None or total_assets is None:
         return None
     if isinstance(net_profit, (float, np.floating)) and np.isnan(net_profit):
@@ -298,7 +365,16 @@ def check_extreme_magnitude_flag(
     roce: float | None,
     roa: float | None,
 ) -> bool:
-    """Flag extreme statistical outlier ratios driven by near-zero equity/asset denominators."""
+    """Flag extreme statistical outlier ratios driven by near-zero equity/asset denominators.
+
+    Args:
+        roe (float | None): Return on Equity percentage.
+        roce (float | None): Return on Capital Employed percentage.
+        roa (float | None): Return on Assets percentage.
+
+    Returns:
+        bool: True if any ratio exceeds 500% in magnitude (indicating near-zero denominator), False otherwise.
+    """
     if roe is not None and abs(roe) > 200.0:
         return True
     if roce is not None and abs(roce) > 200.0:
@@ -316,7 +392,16 @@ def compute_debt_to_equity(
     equity_capital: float | None,
     reserves: float | None,
 ) -> float | None:
-    """Calculate Debt-to-Equity as borrowings / (equity_capital + reserves), returning 0 if borrowings == 0."""
+    """Calculate Debt-to-Equity as borrowings / (equity_capital + reserves), returning 0 if borrowings == 0.
+
+    Args:
+        borrowings (float | None): Total borrowings from balance sheet in INR Crores.
+        equity_capital (float | None): Equity share capital in INR Crores.
+        reserves (float | None): Reserves and surplus in INR Crores.
+
+    Returns:
+        float | None: Debt-to-equity ratio, 0.0 for zero debt, or None if shareholders' equity is non-positive.
+    """
     if equity_capital is None or reserves is None:
         return None
     for val in [equity_capital, reserves]:
@@ -340,7 +425,16 @@ def check_high_leverage_flag(
     broad_sector: str | None = None,
     company_id: str | None = None,
 ) -> bool:
-    """Flag high leverage if D/E > 5 and company is NOT in the Financials sector."""
+    """Flag high leverage if D/E > 5 and company is NOT in the Financials sector.
+
+    Args:
+        debt_to_equity (float | None): Computed debt-to-equity ratio.
+        broad_sector (str | None): Macro sector name.
+        company_id (str | None): NSE ticker identifier.
+
+    Returns:
+        bool: True if non-financial entity exceeds 5.0 D/E threshold, False otherwise.
+    """
     if broad_sector == "Financials":
         return False
     if company_id and company_id in FINANCIALS_SECTOR_COMPANIES:
@@ -359,7 +453,19 @@ def compute_interest_coverage(
     company_id: str | None = None,
     is_banking_template: bool = False,
 ) -> dict[str, Any]:
-    """Calculate Interest Coverage Ratio (ICR) as (operating_profit + other_income) / interest."""
+    """Calculate Interest Coverage Ratio (ICR) as (operating_profit + other_income) / interest.
+
+    Args:
+        operating_profit (float | None): Operating profit in INR Crores.
+        other_income (float | None): Other non-operating income in INR Crores.
+        interest (float | None): Finance costs / interest expense in INR Crores.
+        company_id (str | None): NSE ticker identifier.
+        is_banking_template (bool): Flag indicating financial institution reporting model.
+
+    Returns:
+        dict[str, Any]: Dictionary containing 'value' (float or None) and 'risk_label'
+            (e.g., 'High Risk', 'Healthy', 'Debt-Free / Negligible Interest', or 'Not Applicable').
+    """
     if is_banking_template or (company_id and company_id in BANKING_TEMPLATE_COMPANIES):
         return {
             "value": None,
@@ -415,7 +521,15 @@ def compute_net_debt(
     borrowings: float | None,
     investments: float | None = None,
 ) -> float | None:
-    """Calculate Net Debt as borrowings - investments."""
+    """Calculate Net Debt as borrowings - investments.
+
+    Args:
+        borrowings (float | None): Total balance sheet debt in INR Crores.
+        investments (float | None): Total liquid investments / cash equivalents in INR Crores.
+
+    Returns:
+        float | None: Net debt in INR Crores (negative indicates net-cash position), or None if inputs invalid.
+    """
     if borrowings is None or (
         isinstance(borrowings, (float, np.floating)) and np.isnan(borrowings)
     ):
@@ -433,7 +547,15 @@ def compute_asset_turnover(
     sales: float | None,
     total_assets: float | None,
 ) -> float | None:
-    """Calculate Asset Turnover as sales / total_assets, returning None if total_assets <= 0."""
+    """Calculate Asset Turnover as sales / total_assets, returning None if total_assets <= 0.
+
+    Args:
+        sales (float | None): Top-line revenue in INR Crores.
+        total_assets (float | None): Total balance sheet assets in INR Crores.
+
+    Returns:
+        float | None: Asset turnover ratio, or None if total assets is non-positive or invalid.
+    """
     if sales is None or total_assets is None:
         return None
     if isinstance(sales, (float, np.floating)) and np.isnan(sales):
@@ -451,7 +573,16 @@ def get_financial_statements_data(
     db_path: Path = DB_PATH,
     conn: sqlite3.Connection | None = None,
 ) -> pd.DataFrame:
-    """Extract joined annual financial statement records using exact (company_id, year) matching."""
+    """Extract joined annual financial statement records using exact (company_id, year) matching.
+
+    Args:
+        company_id (str | None): Optional specific NSE ticker symbol to filter on.
+        db_path (Path): Path to the SQLite database file.
+        conn (sqlite3.Connection | None): Optional existing SQLite database connection.
+
+    Returns:
+        pd.DataFrame: Joined annual records containing P&L and Balance Sheet line items.
+    """
     should_close = False
     if conn is None:
         conn = sqlite3.connect(str(db_path))
@@ -484,7 +615,14 @@ def get_financial_statements_data(
 
 
 def calculate_profitability_metrics(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute all profitability, leverage, and efficiency ratios across a joined financial statements DataFrame."""
+    """Compute all profitability, leverage, and efficiency ratios across a joined financial statements DataFrame.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing joined financial statements.
+
+    Returns:
+        pd.DataFrame: Augmented DataFrame populated with 14 financial ratio columns and forensic risk flags.
+    """
     if df.empty:
         return pd.DataFrame()
 

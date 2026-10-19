@@ -1,4 +1,4 @@
-﻿"""Radar chart visualization engine for peer benchmarking.
+"""Radar chart visualization engine for peer benchmarking.
 
 Sprint 3, Day 18: Radar Chart Generator (92 PNGs)
 Generates 8-axis radar comparison charts across all 92 Nifty 100 companies,
