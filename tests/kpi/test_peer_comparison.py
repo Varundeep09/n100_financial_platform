@@ -1,4 +1,4 @@
-﻿"""Unit tests for the multi-tab peer comparison Excel workbook generator.
+"""Unit tests for the multi-tab peer comparison Excel workbook generator.
 
 Sprint 3, Day 19: Peer Comparison Excel Workbook
 Verifies workbook structure (12 sheets), exact company column counts per peer group,

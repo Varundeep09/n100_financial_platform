@@ -301,3 +301,18 @@ def test_qa_all_23_deliverables_present_and_accounted() -> None:
     count = conn.cursor().execute("SELECT COUNT(*) FROM financial_ratios").fetchone()[0]
     conn.close()
     assert count >= 1100, f"financial_ratios table has only {count} rows (< 1100)"
+
+
+def test_qa_repo_cleanliness_and_funding_config() -> None:
+    """Verify repository polish standards: .github/FUNDING.yml exists and .gitignore protects repo."""
+    funding_path = Path(".github/FUNDING.yml")
+    assert funding_path.exists(), ".github/FUNDING.yml should exist"
+    funding_content = funding_path.read_text(encoding="utf-8")
+    assert "github:" in funding_content
+
+    gitignore_path = Path(".gitignore")
+    assert gitignore_path.exists(), ".gitignore should exist"
+    gi_content = gitignore_path.read_text(encoding="utf-8")
+    assert "reports/**/*.pdf" in gi_content
+    assert "reports/**/*.png" in gi_content
+    assert "db/*.db" in gi_content

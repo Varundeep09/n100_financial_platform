@@ -1,4 +1,4 @@
-﻿"""Unit tests for peer analytics engine and intra-group percentiles.
+"""Unit tests for peer analytics engine and intra-group percentiles.
 
 Sprint 3, Day 17: Peer Analytics Module
 Tests intra-group percentile ranks, benchmark gaps, classification tiers,

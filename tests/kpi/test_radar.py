@@ -1,4 +1,4 @@
-﻿"""Unit tests for the 8-axis radar chart visualization suite.
+"""Unit tests for the 8-axis radar chart visualization suite.
 
 Sprint 3, Day 18: Radar Chart Generator (92 PNGs)
 Verifies generation of 92 company radar charts, file size bounds (>10KB),

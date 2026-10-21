@@ -1,15 +1,21 @@
+# Environments & virtualenvs
 .venv/
 venv/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
 
-# Data - raw, supporting, and local processed outputs (confidential / artifacts)
+# Data - raw, supporting, and local processed outputs
 data/raw/
 data/supporting/
 data/processed/*
 !data/processed/capital_allocation.csv
 !data/processed/cluster_labels.csv
+!data/processed/pros_cons_generated.csv
+!data/processed/analysis_parsed.csv
+!data/processed/load_audit.csv
+!data/processed/validation_failures.csv
+!data/processed/exploratory_queries.sql
 data/*.xlsx
 *.xlsx
 
@@ -17,25 +23,27 @@ data/*.xlsx
 db/*.db
 *.db
 
-# Secrets
+# Secrets & environment
 .env
 
-# pytest artifacts
-!reports/pytest_report.html
+# Pytest cache & test artifacts
 .pytest_cache/
+!reports/pytest_report.html
 
-# OS and editor
-.DS_Store
-.vscode/
+# Generated visual outputs (PDFs and PNGs)
+reports/**/*.pdf
+reports/*.pdf
+reports/**/*.png
+reports/*.png
 
+# Preserved project deliverables
 !screener_output.xlsx
 !reports/screener_output/*.xlsx
 !peer_comparison.xlsx
 !reports/peer_comparison.xlsx
 !reports/valuation_summary.xlsx
-!data/processed/pros_cons_generated.csv
-!data/processed/analysis_parsed.csv
-!data/processed/load_audit.csv
-!data/processed/validation_failures.csv
-!data/processed/exploratory_queries.sql
 !reports/cashflow_intelligence.xlsx
+
+# OS & IDE
+.DS_Store
+.vscode/
