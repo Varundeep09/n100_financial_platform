@@ -47,3 +47,5 @@ reports/*.png
 # OS & IDE
 .DS_Store
 .vscode/
+
+n100_financial_platform/

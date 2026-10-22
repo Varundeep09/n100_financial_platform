@@ -800,10 +800,23 @@ def render_home_screen(universe_df: pd.DataFrame) -> None:
     Returns:
         None
     """
+    with st.spinner("Retrieving latest database snapshot..."):
+        latest_year_df = load_query(
+            "SELECT MAX(year) as max_year FROM financial_ratios"
+        )
+        latest_year = (
+            latest_year_df["max_year"].iloc[0]
+            if not latest_year_df.empty and pd.notna(latest_year_df["max_year"].iloc[0])
+            else "FY2024"
+        )
+
     st.title("📈 Executive Overview & Universe Health")
     st.markdown(
         "Institutional analytics covering **92 NSE Nifty 100 constituents** across fundamentals, "
         "valuation multiples, and solvency risk metrics."
+    )
+    st.caption(
+        f"🗓️ **Last Updated:** Financial records and valuation ratios current through `{latest_year}`."
     )
 
     st.markdown("---")
@@ -996,12 +1009,33 @@ def render_company_profile_screen(universe_df: pd.DataFrame, ticker: str) -> Non
     de_val = comp.get("debt_to_equity")
     score_val = comp.get("composite_ranking_score")
     extreme_flag = comp.get("extreme_magnitude_flag") == 1
+    is_dq_issue = ticker in ("SBIN", "BEL", "HAL")
 
-    if extreme_flag:
-        roe_display = "N/A*"
+    if is_dq_issue:
+        dq_reason = (
+            "Source balance sheet schedules omit standard share capital/reserves schedule."
+            if ticker == "SBIN"
+            else "Source balance sheet equity/reserves contain verified ~100x scale anomaly."
+        )
+        roe_display = "N/A (Data Quality Issue)"
+        roe_help = f"Neutralized: {dq_reason}"
+        roce_display = "N/A (Data Quality Issue)"
+        roce_help = f"Neutralized: {dq_reason}"
+        de_display = "N/A (Data Quality Issue)"
+        de_help = f"Neutralized: {dq_reason}"
+        score_display = "N/A (Data Quality Issue)"
+        score_help = f"Excluded from ranking: {dq_reason}"
+    elif extreme_flag:
+        roe_display = "N/A (Data Quality Issue)"
         roe_help = "Neutralized: Source balance sheet data scale error (~100x)."
-        roce_display = "N/A*"
+        roce_display = "N/A (Data Quality Issue)"
         roce_help = "Neutralized: Source balance sheet data scale error (~100x)."
+        de_display = (
+            f"{de_val:.2f}x" if pd.notna(de_val) else "N/A (Data Quality Issue)"
+        )
+        de_help = "Debt-to-Equity ratio."
+        score_display = "N/A (Data Quality Issue)"
+        score_help = "Excluded from ranking due to source scale error."
     elif sector == "Financials" and pd.isna(roce_val):
         roe_display = f"{roe_val:.1f}%" if pd.notna(roe_val) else "—"
         roe_help = "Return on Equity (Latest March snapshot)."
@@ -1009,27 +1043,23 @@ def render_company_profile_screen(universe_df: pd.DataFrame, ticker: str) -> Non
         roce_help = (
             "ROCE is structurally inapplicable for banking and finance templates."
         )
+        de_display = "N/A (Bank)" if pd.isna(de_val) else f"{de_val:.2f}x"
+        de_help = "Standard D/E is not applicable for banking business models."
+        score_display = (
+            f"{score_val:.1f} / 100" if pd.notna(score_val) else "N/A (Neutralized)"
+        )
+        score_help = "Composite percentile ranking score."
     else:
         roe_display = f"{roe_val:.1f}%" if pd.notna(roe_val) else "—"
         roe_help = "Return on Equity (Latest March snapshot)."
         roce_display = f"{roce_val:.1f}%" if pd.notna(roce_val) else "—"
         roce_help = "Return on Capital Employed (Latest March snapshot)."
-
-    if sector == "Financials" and pd.isna(de_val):
-        de_display = "N/A (Bank)"
-        de_help = "Standard D/E is not applicable for banking business models."
-    else:
         de_display = f"{de_val:.2f}x" if pd.notna(de_val) else "—"
         de_help = "Debt-to-Equity ratio (Latest March snapshot)."
-
-    if pd.notna(score_val):
-        score_display = f"{score_val:.1f} / 100"
-        score_help = "Composite percentile ranking score across 4 pillars."
-    else:
-        score_display = "N/A (Neutralized)"
-        score_help = (
-            "Excluded from ranking due to source scale error or missing cash flow."
+        score_display = (
+            f"{score_val:.1f} / 100" if pd.notna(score_val) else "N/A (Neutralized)"
         )
+        score_help = "Composite percentile ranking score across 4 pillars."
 
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     kpi1.metric("Return on Equity (ROE)", roe_display, help=roe_help)
@@ -1100,7 +1130,8 @@ def render_company_profile_screen(universe_df: pd.DataFrame, ticker: str) -> Non
     # 4. Peer Group Badge & Classification Breakdown
     st.subheader("👥 Peer Group Benchmarking & Performance Badges")
 
-    peer_info = load_company_peer_info(ticker)
+    with st.spinner(f"Loading peer benchmarking records for {ticker}..."):
+        peer_info = load_company_peer_info(ticker)
     group_name = peer_info["peer_group_name"]
     is_benchmark = peer_info["is_benchmark"]
     classes = peer_info["classifications"]
@@ -1342,7 +1373,8 @@ def render_peer_comparison_screen(peer_group_name: str) -> None:
 
     st.markdown("---")
 
-    peer_df = load_peer_group_metrics(peer_group_name)
+    with st.spinner(f"Querying peer metrics for {peer_group_name}..."):
+        peer_df = load_peer_group_metrics(peer_group_name)
     if peer_df.empty:
         st.warning(f"No peer percentile data located for group '{peer_group_name}'.")
         return
@@ -1548,7 +1580,8 @@ def render_sector_analytics_screen(
     sector_company_count = len(target_df)
 
     # Peer classifications for this sector
-    peer_class_df = load_peer_classifications_by_sector()
+    with st.spinner(f"Aggregating peer classifications for {chosen_sec}..."):
+        peer_class_df = load_peer_classifications_by_sector()
     if is_all_sectors:
         sec_bic = int(
             peer_class_df[peer_class_df["classification"] == "Best in Class"][
@@ -1832,7 +1865,8 @@ def render_cashflow_intelligence_screen(
         "Cash from Operations (CFO), Cash from Investing (CFI), and Cash from Financing (CFF)."
     )
 
-    cap_df = load_capital_allocation_patterns()
+    with st.spinner("Loading capital allocation distributions..."):
+        cap_df = load_capital_allocation_patterns()
     if not cap_df.empty:
         latest_cap = (
             cap_df.sort_values("year").groupby("company_id").last().reset_index()
@@ -1951,7 +1985,8 @@ def render_cashflow_intelligence_screen(
         "Decomposition of Cash from Operations (CFO), Investing (CFI), and Financing (CFF) across audited fiscal years."
     )
 
-    cf_history = load_company_cashflow_history(selected_ticker)
+    with st.spinner(f"Fetching 10-year cash flow records for {selected_ticker}..."):
+        cf_history = load_company_cashflow_history(selected_ticker)
     comp_row = universe_df[universe_df["company_id"] == selected_ticker]
 
     if not comp_row.empty:
@@ -2131,7 +2166,8 @@ def render_trend_growth_screen(universe_df: pd.DataFrame, selected_ticker: str) 
 
     st.subheader(f"🏢 Company Focus: **{comp_name} ({selected_ticker})**")
 
-    pl_history = load_company_pl_history(selected_ticker)
+    with st.spinner(f"Loading historical statements for {selected_ticker}..."):
+        pl_history = load_company_pl_history(selected_ticker)
     if pl_history.empty:
         st.warning(
             f"No historical financial statement records found for `{selected_ticker}`."
@@ -2196,8 +2232,26 @@ def render_trend_growth_screen(universe_df: pd.DataFrame, selected_ticker: str) 
             f"₹{latest_val:,.0f}" if col_name != "eps" else f"₹{latest_val:.1f}",
             f"{latest_yoy:+.1f}% YoY" if pd.notna(latest_yoy) else None,
         )
-        m2.metric("3-Year CAGR", f"{cagr_3y:.1f}%" if cagr_3y is not None else "N/A")
-        m3.metric("5-Year CAGR", f"{cagr_5y:.1f}%" if cagr_5y is not None else "N/A")
+        m2_str = (
+            f"{cagr_3y:.1f}%"
+            if cagr_3y is not None
+            else (
+                "N/A (Data Quality Issue)"
+                if selected_ticker in ("SBIN", "BEL", "HAL")
+                else "N/A"
+            )
+        )
+        m3_str = (
+            f"{cagr_5y:.1f}%"
+            if cagr_5y is not None
+            else (
+                "N/A (Data Quality Issue)"
+                if selected_ticker in ("SBIN", "BEL", "HAL")
+                else "N/A"
+            )
+        )
+        m2.metric("3-Year CAGR", m2_str)
+        m3.metric("5-Year CAGR", m3_str)
 
     # 1. 10-Year Trajectory Chart (Plotly)
     fig_trend = go.Figure()
@@ -2394,7 +2448,8 @@ def render_valuation_screen(universe_df: pd.DataFrame, selected_ticker: str) -> 
 
     st.markdown("---")
 
-    val_df = load_valuation_dataset()
+    with st.spinner("Computing valuation dataset and multiples..."):
+        val_df = load_valuation_dataset()
     if val_df.empty:
         st.warning(
             "Valuation dataset could not be computed. Verify market_cap table exists."
@@ -2671,7 +2726,8 @@ def render_valuation_screen(universe_df: pd.DataFrame, selected_ticker: str) -> 
         "Official corporate regulatory filings and direct PDF links indexed in the SQLite warehouse."
     )
 
-    docs_df = load_company_documents(selected_ticker)
+    with st.spinner(f"Retrieving annual report documents for {selected_ticker}..."):
+        docs_df = load_company_documents(selected_ticker)
     if not docs_df.empty:
         d_col1, d_col2 = st.columns([0.4, 0.6])
         with d_col1:
@@ -2701,6 +2757,47 @@ def render_valuation_screen(universe_df: pd.DataFrame, selected_ticker: str) -> 
 # ==============================================================================
 
 
+def render_screen_header() -> None:
+    """Render consistent institutional top header on every screen.
+
+    Returns:
+        None
+    """
+    st.markdown(
+        """
+        <div style="background: linear-gradient(90deg, #0F172A 0%, #1E293B 100%); 
+                    padding: 12px 20px; border-radius: 8px; margin-bottom: 24px; 
+                    border-left: 5px solid #3B82F6; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 700; font-size: 1.05rem; color: #F8FAFC; letter-spacing: 0.5px;">
+                N100 FINANCIAL INTELLIGENCE PLATFORM
+            </span>
+            <span style="font-size: 0.85rem; color: #94A3B8; font-weight: 500;">
+                Data as of FY2024 | 92 Nifty 100 Companies
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_screen_footer() -> None:
+    """Render standardized compliance and data attribution footer on every screen.
+
+    Returns:
+        None
+    """
+    st.markdown("---")
+    st.markdown(
+        """
+        <div style="text-align: center; color: #64748B; font-size: 0.82rem; padding: 12px 0 24px 0;">
+            <b>N100 Financial Intelligence Platform</b> &bull; Data as of FY2024 | 92 Nifty 100 Companies<br>
+            <i>Simulated data for stock prices and market cap. Real financial statements from BSE/NSE filings.</i>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def main() -> None:
     """Main application router for Streamlit interface.
 
@@ -2724,6 +2821,8 @@ def main() -> None:
         selected_drilldown_ticker,
     ) = render_sidebar(universe_df)
 
+    render_screen_header()
+
     if selected_screen == "🏠 Home / Overview":
         render_home_screen(universe_df)
     elif selected_screen == "🏢 Company Profile":
@@ -2742,6 +2841,8 @@ def main() -> None:
         render_valuation_screen(universe_df, selected_drilldown_ticker)
     else:
         render_home_screen(universe_df)
+
+    render_screen_footer()
 
 
 if __name__ == "__main__":
