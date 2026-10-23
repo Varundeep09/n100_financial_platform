@@ -21,3 +21,5 @@ ruff>=0.4                                      # Linting
 pre-commit>=3.7                                  # Git hooks: black + ruff before commit
 python-dotenv>=1.0                                 # Config via .env
 requests>=2.30                                       # URL validation (DQ-13, documents.xlsx)
+
+python-pptx>=1.0.0                      # Executive presentation generation (reports/N100_Presentation.pptx)
